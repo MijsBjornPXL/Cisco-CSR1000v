@@ -1,6 +1,8 @@
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
   <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+
     <hostname>CSR-NETCONF-AUTO</hostname>
+
     <interface>
       <GigabitEthernet>
         <name>2</name>
@@ -13,7 +15,9 @@
             </primary>
           </address>
         </ip>
+        <noshutdown/>
       </GigabitEthernet>
+
       <GigabitEthernet>
         <name>3</name>
         <description>Configured from GitHub via NETCONF</description>
@@ -25,27 +29,34 @@
             </primary>
           </address>
         </ip>
+        <noshutdown/>
       </GigabitEthernet>
     </interface>
+
     <router>
       <router-ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-ospf">
         <ospf>
           <process-id>
             <id>1</id>
+
             <router-id>1.1.1.1</router-id>
+
             <network>
               <ip>192.168.20.0</ip>
               <wildcard>0.0.0.255</wildcard>
               <area>0</area>
             </network>
+
             <network>
               <ip>192.168.30.0</ip>
               <wildcard>0.0.0.255</wildcard>
               <area>0</area>
             </network>
+
           </process-id>
         </ospf>
       </router-ospf>
     </router>
+
   </native>
 </config>
