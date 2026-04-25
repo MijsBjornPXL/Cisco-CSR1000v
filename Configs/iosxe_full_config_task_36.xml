@@ -1,0 +1,50 @@
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+    <hostname>CSR-GITHUB-AUTO</hostname>
+
+    <interface>
+      <GigabitEthernet>
+        <name>2</name>
+        <description>Configured from GitHub via NETCONF</description>
+        <ip>
+          <address>
+            <primary>
+              <address>192.168.20.1</address>
+              <mask>255.255.255.0</mask>
+            </primary>
+          </address>
+        </ip>
+      </GigabitEthernet>
+
+      <GigabitEthernet>
+        <name>3</name>
+        <description>Configured from GitHub via NETCONF</description>
+        <ip>
+          <address>
+            <primary>
+              <address>192.168.30.1</address>
+              <mask>255.255.255.0</mask>
+            </primary>
+          </address>
+        </ip>
+      </GigabitEthernet>
+    </interface>
+
+    <router>
+      <ospf xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-ospf">
+        <id>1</id>
+        <router-id>1.1.1.1</router-id>
+        <network>
+          <ip>192.168.20.0</ip>
+          <wildcard>0.0.0.255</wildcard>
+          <area>0</area>
+        </network>
+        <network>
+          <ip>192.168.30.0</ip>
+          <wildcard>0.0.0.255</wildcard>
+          <area>0</area>
+        </network>
+      </ospf>
+    </router>
+  </native>
+</config>
