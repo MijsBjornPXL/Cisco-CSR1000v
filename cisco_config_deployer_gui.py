@@ -1,9 +1,12 @@
+import difflib
 import json
 import os
+import platform
+import subprocess
 import threading
 import time
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog, messagebox
 from urllib.parse import quote
 
 import customtkinter as ctk
@@ -15,6 +18,8 @@ requests.packages.urllib3.disable_warnings()
 
 GITHUB_API_URL = "https://api.github.com/repos/MijsBjornPXL/Cisco-CSR1000v/contents/Configs?ref=main"
 PROFILE_FILE = "csr1000v_profiles.json"
+BACKUP_DIR = "backups"
+LOCAL_CONFIG_DIR = "Configs"
 
 RESTCONF_HEADERS = {
     "Accept": "application/yang-data+json",
@@ -29,28 +34,30 @@ class ModernConfigPushGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Cisco Config Deployer - M1jsXploit")
-        self.root.geometry("1120x900")
-        self.root.minsize(950, 700)
+        self.root.geometry("1180x952")
+        self.root.minsize(1000, 760)
 
         self.configs = []
         self.is_loading = False
+        self.password_visible = False
         self.profiles = self.load_profiles_from_file()
+        os.makedirs(LOCAL_CONFIG_DIR, exist_ok=True)
 
         self.create_widgets()
         self.load_profile_dropdown()
-        self.load_configs_threaded()
+        self.load_local_configs()
 
     def create_widgets(self):
         self.main_frame = ctk.CTkFrame(self.root, corner_radius=16)
-        self.main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        self.main_frame.pack(fill="both", expand=True, padx=20, pady=8)
 
         header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        header_frame.pack(fill="x", padx=20, pady=(20, 10))
+        header_frame.pack(fill="x", padx=22, pady=(22, 8))
 
         ctk.CTkLabel(
             header_frame,
             text="Cisco Config Deployer",
-            font=ctk.CTkFont(size=22, weight="bold")
+            font=ctk.CTkFont(size=18, weight="bold")
         ).pack(anchor="w")
 
         ctk.CTkLabel(
@@ -58,89 +65,81 @@ class ModernConfigPushGUI:
             text="Deploy NETCONF XML and RESTCONF JSON configs directly from GitHub",
             font=ctk.CTkFont(size=14),
             text_color="gray70"
-        ).pack(anchor="w", pady=(5, 0))
+        ).pack(anchor="w", pady=(6, 0))
 
-        # =====================================
-        # Unified Settings Card
-        # =====================================
-
-        settings_frame = ctk.CTkFrame(
-            self.main_frame,
-            corner_radius=14,
-            fg_color="#323232"
-        )
-        settings_frame.pack(fill="x", padx=20, pady=(10, 15))
-
-        # -------------------------
-        # Profiles
-        # -------------------------
+        settings_frame = ctk.CTkFrame(self.main_frame, corner_radius=14, fg_color="#323232")
+        settings_frame.pack(fill="x", padx=22, pady=(10, 12))
 
         ctk.CTkLabel(
             settings_frame,
             text="Profiles",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 8))
+        ).pack(anchor="w", padx=18, pady=(18, 8))
 
         profile_row = ctk.CTkFrame(settings_frame, fg_color="transparent")
-        profile_row.pack(fill="x", padx=15, pady=(0, 18))
+        profile_row.pack(fill="x", padx=18, pady=(0, 22))
 
-        self.profile_name_entry = ctk.CTkEntry(
-            profile_row,
-            placeholder_text="Profile name"
-        )
-        self.profile_name_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.profile_name_entry = ctk.CTkEntry(profile_row, placeholder_text="Profile name")
+        self.profile_name_entry.pack(side="left", fill="x", expand=True, padx=(0, 12))
 
         self.profile_var = tk.StringVar(value="No profiles")
-
         self.profile_dropdown = ctk.CTkOptionMenu(
             profile_row,
             variable=self.profile_var,
             values=["No profiles"],
-            width=220
+            width=230
         )
-        self.profile_dropdown.pack(side="left", padx=(0, 10))
+        self.profile_dropdown.pack(side="left", padx=(0, 12))
 
         ctk.CTkButton(
             profile_row,
-            text="Save Profile",
+            text="💾 Save Profile",
             command=self.save_current_profile,
-            height=36,
+            height=38,
             fg_color="#7C3AED",
             hover_color="#6D28D9"
-        ).pack(side="left", padx=(0, 10))
+        ).pack(side="left", padx=(0, 12))
 
         ctk.CTkButton(
             profile_row,
-            text="Load Profile",
+            text="📂 Load Profile",
             command=self.load_selected_profile,
-            height=36,
+            height=38,
             fg_color="#0891B2",
             hover_color="#0E7490"
+        ).pack(side="left", padx=(0, 12))
+
+        ctk.CTkButton(
+            profile_row,
+            text="🔌 Test Connection",
+            command=self.test_connection_threaded,
+            height=38,
+            fg_color="#2563EB",
+            hover_color="#1D4ED8"
+        ).pack(side="left", padx=(0, 12))
+
+        ctk.CTkButton(
+            profile_row,
+            text="ℹ️ Get Device Info",
+            command=self.get_device_info_threaded,
+            height=38,
+            fg_color="#0F766E",
+            hover_color="#115E59"
         ).pack(side="left")
 
         divider = ctk.CTkFrame(settings_frame, height=1, fg_color="#4A4A4A")
-        divider.pack(fill="x", padx=15, pady=(0, 15))
-
-        # -------------------------
-        # Target Router Settings
-        # -------------------------
+        divider.pack(fill="x", padx=18, pady=(0, 0))
 
         ctk.CTkLabel(
             settings_frame,
             text="Target Router Settings",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(0, 10))
+        ).pack(anchor="w", padx=18, pady=(0, 8))
 
         target_grid = ctk.CTkFrame(settings_frame, fg_color="transparent")
-        target_grid.pack(fill="x", padx=15, pady=(0, 15))
+        target_grid.pack(fill="x", padx=18, pady=(0, 18))
 
-        labels = [
-            "Host / IP",
-            "Username",
-            "Password",
-            "NETCONF Port",
-            "RESTCONF Port"
-        ]
+        labels = ["Host / IP", "Username", "Password", "NETCONF Port", "RESTCONF Port"]
 
         for i, text in enumerate(labels):
             ctk.CTkLabel(
@@ -148,122 +147,138 @@ class ModernConfigPushGUI:
                 text=text,
                 font=ctk.CTkFont(size=12),
                 text_color="gray75"
-            ).grid(row=0, column=i, sticky="w", padx=8, pady=(0, 3))
+            ).grid(row=0, column=i, sticky="w", padx=8, pady=(0, 4))
 
-        self.host_entry = ctk.CTkEntry(
-            target_grid,
-            placeholder_text="Enter hostname or IP"
-        )
-        self.host_entry.grid(row=1, column=0, padx=8, pady=(0, 10), sticky="ew")
-        #self.host_entry.insert(0, "bjornmijs.asuscomm.com")
+        self.host_entry = ctk.CTkEntry(target_grid, placeholder_text="Enter hostname or IP")
+        self.host_entry.grid(row=1, column=0, padx=8, pady=(0, 12), sticky="ew")
 
-        self.username_entry = ctk.CTkEntry(
-            target_grid,
-            placeholder_text="Enter username"
-        )
-        self.username_entry.grid(row=1, column=1, padx=8, pady=(0, 10), sticky="ew")
-        #self.username_entry.insert(0, "bjorn")
+        self.username_entry = ctk.CTkEntry(target_grid, placeholder_text="Enter username")
+        self.username_entry.grid(row=1, column=1, padx=8, pady=(0, 12), sticky="ew")
+
+        password_frame = ctk.CTkFrame(target_grid, fg_color="transparent")
+        password_frame.grid(row=1, column=2, padx=8, pady=(0, 12), sticky="ew")
+        password_frame.columnconfigure(0, weight=1)
 
         self.password_entry = ctk.CTkEntry(
-            target_grid,
+            password_frame,
             placeholder_text="Enter password",
             show="*"
         )
-        self.password_entry.grid(row=1, column=2, padx=8, pady=(0, 10), sticky="ew")
+        self.password_entry.grid(row=0, column=0, sticky="ew", padx=(0, 6))
 
-        self.netconf_port_entry = ctk.CTkEntry(
-            target_grid,
-            placeholder_text="830"
+        self.password_toggle_button = ctk.CTkButton(
+            password_frame,
+            text="👁",
+            width=42,
+            command=self.toggle_password_visibility,
+            fg_color="#444444",
+            hover_color="#555555"
         )
-        self.netconf_port_entry.grid(row=1, column=3, padx=8, pady=(0, 10), sticky="ew")
-        #self.netconf_port_entry.insert(0, "9097")
+        self.password_toggle_button.grid(row=0, column=1)
 
-        self.restconf_port_entry = ctk.CTkEntry(
-            target_grid,
-            placeholder_text="443"
-        )
-        self.restconf_port_entry.grid(row=1, column=4, padx=8, pady=(0, 10), sticky="ew")
-        #self.restconf_port_entry.insert(0, "9096")
+        self.netconf_port_entry = ctk.CTkEntry(target_grid, placeholder_text="830")
+        self.netconf_port_entry.grid(row=1, column=3, padx=8, pady=(0, 12), sticky="ew")
+
+        self.restconf_port_entry = ctk.CTkEntry(target_grid, placeholder_text="443")
+        self.restconf_port_entry.grid(row=1, column=4, padx=8, pady=(0, 12), sticky="ew")
 
         for col in range(5):
             target_grid.columnconfigure(col, weight=1)
 
-        # GitHub selector
         select_frame = ctk.CTkFrame(self.main_frame, corner_radius=14)
-        select_frame.pack(fill="x", padx=20, pady=(0, 15))
+        select_frame.pack(fill="x", padx=22, pady=(0, 18))
 
         ctk.CTkLabel(
             select_frame,
             text="GitHub Config Selection",
             font=ctk.CTkFont(size=16, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 8))
+        ).pack(anchor="w", padx=18, pady=(18, 10))
 
         self.config_var = tk.StringVar()
         self.config_dropdown = ctk.CTkOptionMenu(
             select_frame,
             variable=self.config_var,
             values=["Loading configs..."],
-            width=620
+            width=680
         )
-        self.config_dropdown.pack(anchor="w", padx=15, pady=(0, 15))
+        self.config_dropdown.pack(anchor="w", padx=18, pady=(0, 18))
 
-        # Buttons
         button_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=20, pady=(0, 10))
+        button_frame.pack(fill="x", padx=22, pady=(0, 12))
 
         self.refresh_button = ctk.CTkButton(
             button_frame,
-            text="Refresh Configs",
+            text="🔄 Refresh Configs",
             command=self.load_configs_threaded,
-            height=38,
+            height=40,
             fg_color="#7C3AED",
             hover_color="#6D28D9"
         )
-        self.refresh_button.pack(side="left", padx=(0, 10))
+        self.refresh_button.pack(side="left", padx=(0, 12))
 
         self.preview_button = ctk.CTkButton(
             button_frame,
-            text="Preview Config",
+            text="👁 Preview Config",
             command=self.preview_config_threaded,
-            height=38,
+            height=40,
             fg_color="#0891B2",
             hover_color="#0E7490"
         )
-        self.preview_button.pack(side="left", padx=(0, 10))
+        self.preview_button.pack(side="left", padx=(0, 12))
+
+        self.diff_button = ctk.CTkButton(
+            button_frame,
+            text="🔍 Diff Viewer",
+            command=self.diff_viewer_threaded,
+            height=40,
+            fg_color="#475569",
+            hover_color="#334155"
+        )
+        self.diff_button.pack(side="left", padx=(0, 12))
 
         self.push_button = ctk.CTkButton(
             button_frame,
-            text="Push Selected Config",
+            text="🚀 Push Config",
             command=self.push_config_threaded,
-            height=38,
+            height=40,
             fg_color="#15803D",
             hover_color="#166534"
         )
-        self.push_button.pack(side="left", padx=(0, 10))
+        self.push_button.pack(side="left", padx=(0, 12))
 
         self.export_log_button = ctk.CTkButton(
             button_frame,
-            text="Export Log",
+            text="📄 Export Log",
             command=self.export_log,
-            height=38,
+            height=40,
             fg_color="#CA8A04",
             hover_color="#A16207"
         )
-        self.export_log_button.pack(side="left", padx=(0, 10))
+        self.export_log_button.pack(side="left", padx=(0, 12))
 
         self.clear_button = ctk.CTkButton(
             button_frame,
-            text="Clear Log",
+            text="🗑 Clear Log",
             command=self.clear_log,
-            height=38,
+            height=40,
             fg_color="#444444",
             hover_color="#555555"
         )
         self.clear_button.pack(side="left")
 
-        # Progress
+        options_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        options_frame.pack(fill="x", padx=22, pady=(0, 10))
+
+        self.backup_before_deploy_var = tk.BooleanVar(value=True)
+        self.backup_checkbox = ctk.CTkCheckBox(
+            options_frame,
+            text="Backup running-config before deploy",
+            variable=self.backup_before_deploy_var
+        )
+        self.backup_checkbox.pack(anchor="w")
+
         progress_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        progress_frame.pack(fill="x", padx=20, pady=(5, 10))
+        progress_frame.pack(fill="x", padx=22, pady=(4, 8))
 
         self.status_label = ctk.CTkLabel(
             progress_frame,
@@ -274,29 +289,74 @@ class ModernConfigPushGUI:
         self.status_label.pack(anchor="w")
 
         self.progress_bar = ctk.CTkProgressBar(progress_frame)
-        self.progress_bar.pack(fill="x", pady=(5, 0))
+        self.progress_bar.pack(fill="x", pady=(6, 0))
         self.progress_bar.set(0)
 
-        # Log
         log_frame = ctk.CTkFrame(self.main_frame, corner_radius=14)
-        log_frame.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        log_frame.pack(fill="both", expand=True, padx=22, pady=(6, 8))
 
         ctk.CTkLabel(
             log_frame,
             text="Deployment Log",
             font=ctk.CTkFont(size=18, weight="bold")
-        ).pack(anchor="w", padx=15, pady=(15, 8))
+        ).pack(anchor="w", padx=18, pady=(18, 10))
 
         self.log_box = ctk.CTkTextbox(
             log_frame,
             font=ctk.CTkFont(family="Consolas", size=13),
             corner_radius=10
         )
-        self.log_box.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        self.log_box.pack(fill="both", expand=True, padx=18, pady=(0, 18))
 
-    # =========================
-    # Helpers
-    # =========================
+        footer = ctk.CTkLabel(
+            self.main_frame,
+            text="Cisco Config Deployer v1.0 | by M1jsXploit",
+            font=ctk.CTkFont(size=11),
+            text_color="gray55"
+        )
+        footer.pack(anchor="e", padx=22, pady=(0, 10))
+
+    def load_local_configs(self):
+        try:
+            self.configs = []
+    
+            files = os.listdir(LOCAL_CONFIG_DIR)
+    
+            for filename in files:
+                if filename.lower().endswith((".xml", ".json")):
+                    path = os.path.join(LOCAL_CONFIG_DIR, filename)
+    
+                    self.configs.append({
+                        "name": filename,
+                        "local_path": path,
+                        "type": self.get_config_type(filename)
+                    })
+    
+            if not self.configs:
+                self.config_dropdown.configure(values=["No local configs found"])
+                self.config_var.set("No local configs found")
+                self.log("No local configs found.")
+                return
+    
+            values = [f"{cfg['name']} ({cfg['type']})" for cfg in self.configs]
+            self.config_dropdown.configure(values=values)
+            self.config_var.set(values[0])
+    
+            self.log(f"Loaded {len(self.configs)} local config(s).")
+    
+        except Exception as e:
+            self.log(f"Failed loading local configs: {e}")
+
+
+    def toggle_password_visibility(self):
+        self.password_visible = not self.password_visible
+
+        if self.password_visible:
+            self.password_entry.configure(show="")
+            self.password_toggle_button.configure(text="🙈")
+        else:
+            self.password_entry.configure(show="*")
+            self.password_toggle_button.configure(text="👁")
 
     def log(self, message):
         timestamp = time.strftime("%H:%M:%S")
@@ -316,6 +376,7 @@ class ModernConfigPushGUI:
     def set_buttons_state(self, state):
         self.refresh_button.configure(state=state)
         self.preview_button.configure(state=state)
+        self.diff_button.configure(state=state)
         self.push_button.configure(state=state)
         self.export_log_button.configure(state=state)
         self.clear_button.configure(state=state)
@@ -333,10 +394,8 @@ class ModernConfigPushGUI:
         if self.is_loading:
             current = self.progress_bar.get()
             new_value = current + 0.03
-
             if new_value > 0.95:
                 new_value = 0.15
-
             self.progress_bar.set(new_value)
             self.root.after(120, self.animate_progress)
 
@@ -366,10 +425,6 @@ class ModernConfigPushGUI:
             "restconf_port": int(restconf_port),
             "restconf_base_url": f"https://{host}:{restconf_port}"
         }
-
-    # =========================
-    # Profiles
-    # =========================
 
     def load_profiles_from_file(self):
         if not os.path.exists(PROFILE_FILE):
@@ -414,7 +469,6 @@ class ModernConfigPushGUI:
         self.save_profiles_to_file()
         self.load_profile_dropdown()
         self.profile_var.set(name)
-
         self.log(f"Profile saved with password: {name}")
 
     def load_selected_profile(self):
@@ -435,6 +489,8 @@ class ModernConfigPushGUI:
         self.password_entry.delete(0, "end")
         self.password_entry.insert(0, profile.get("password", ""))
         self.password_entry.configure(show="*")
+        self.password_visible = False
+        self.password_toggle_button.configure(text="👁")
 
         self.netconf_port_entry.delete(0, "end")
         self.netconf_port_entry.insert(0, profile.get("netconf_port", "830"))
@@ -444,60 +500,43 @@ class ModernConfigPushGUI:
 
         self.log(f"Profile loaded with password: {name}")
 
-    # =========================
-    # GitHub
-    # =========================
-
     def load_configs_threaded(self):
         threading.Thread(target=self.load_configs, daemon=True).start()
 
     def load_configs(self):
         try:
             self.set_buttons_state("disabled")
-            self.start_loading("Fetching config list from GitHub...")
-            self.log("Fetching config list from GitHub...")
-
-            response = requests.get(
-                GITHUB_API_URL,
-                headers={"Cache-Control": "no-cache"},
-                timeout=30
-            )
+            self.start_loading("Syncing configs from GitHub...")
+            self.log("Fetching configs from GitHub...")
+    
+            response = requests.get(GITHUB_API_URL, timeout=30)
             response.raise_for_status()
-
+    
             files = response.json()
-
-            self.configs = [
-                {
-                    "name": item["name"],
-                    "download_url": item["download_url"],
-                    "type": self.get_config_type(item["name"])
-                }
-                for item in files
-                if item["type"] == "file"
-                and item["name"].lower().endswith((".xml", ".json"))
-            ]
-
-            if not self.configs:
-                self.log("No XML or JSON config files found.")
-                self.stop_loading("No configs found.", 0)
-                return
-
-            dropdown_values = [
-                f"{cfg['name']} ({cfg['type']})"
-                for cfg in self.configs
-            ]
-
-            self.config_dropdown.configure(values=dropdown_values)
-            self.config_var.set(dropdown_values[0])
-
-            self.log(f"Found {len(self.configs)} config file(s).")
-            self.stop_loading("Config list loaded.", 1)
-
+            downloaded = 0
+    
+            for item in files:
+                if item["type"] == "file" and item["name"].lower().endswith((".xml", ".json")):
+                    file_resp = requests.get(item["download_url"], timeout=30)
+                    file_resp.raise_for_status()
+    
+                    local_path = os.path.join(LOCAL_CONFIG_DIR, item["name"])
+    
+                    with open(local_path, "w", encoding="utf-8") as f:
+                        f.write(file_resp.text)
+    
+                    downloaded += 1
+    
+            self.log(f"Downloaded {downloaded} config(s) from GitHub.")
+            self.load_local_configs()
+    
+            self.stop_loading("Configs refreshed.", 1)
+    
         except Exception as error:
-            self.stop_loading("Failed to load configs.", 0)
-            self.log(f"Failed to load GitHub configs: {error}")
+            self.stop_loading("Refresh failed.", 0)
+            self.log(f"GitHub sync failed: {error}")
             messagebox.showerror("GitHub Error", str(error))
-
+    
         finally:
             self.set_buttons_state("normal")
 
@@ -519,31 +558,18 @@ class ModernConfigPushGUI:
         raise ValueError("No valid config selected.")
 
     def download_selected_config(self, config):
-        url = config["download_url"] + f"?nocache={time.time()}"
-
-        self.log(f"Downloading config: {config['name']}")
-        self.set_status(f"Downloading {config['name']}...", 0.25)
-
-        response = requests.get(
-            url,
-            headers={
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache"
-            },
-            timeout=30
-        )
-        response.raise_for_status()
-
-        content = response.text.strip()
-
+        path = config["local_path"]
+    
+        self.log(f"Loading local config: {config['name']}")
+        self.set_status(f"Loading {config['name']}...", 0.25)
+    
+        with open(path, "r", encoding="utf-8") as file:
+            content = file.read().strip()
+    
         if config["type"] == "NETCONF" and "noshutdown" in content.lower():
-            raise ValueError("Downloaded XML contains unsupported <noshutdown/> tag.")
-
+            raise ValueError("Local XML contains unsupported <noshutdown/> tag.")
+    
         return content
-
-    # =========================
-    # Preview
-    # =========================
 
     def preview_config_threaded(self):
         threading.Thread(target=self.preview_config, daemon=True).start()
@@ -551,13 +577,9 @@ class ModernConfigPushGUI:
     def preview_config(self):
         try:
             self.set_buttons_state("disabled")
-
             config = self.get_selected_config()
 
-            self.start_loading(
-                f"{config['type']} detected - previewing {config['name']}..."
-            )
-
+            self.start_loading(f"{config['type']} detected - previewing {config['name']}...")
             self.log(f"{config['type']} detected based on file extension.")
 
             content = self.download_selected_config(config)
@@ -621,7 +643,7 @@ class ModernConfigPushGUI:
 
         ctk.CTkButton(
             footer,
-            text="Copy to Clipboard",
+            text="📋 Copy to Clipboard",
             command=lambda: self.copy_to_clipboard(pretty_content),
             height=36,
             fg_color="#0891B2",
@@ -651,9 +673,307 @@ class ModernConfigPushGUI:
         self.root.clipboard_append(content)
         self.log("Preview content copied to clipboard.")
 
-    # =========================
-    # Deployment
-    # =========================
+    def test_connection_threaded(self):
+        threading.Thread(target=self.test_connection, daemon=True).start()
+
+    def test_connection(self):
+        try:
+            self.set_buttons_state("disabled")
+            router = self.get_router_settings()
+
+            self.start_loading("Testing connection...")
+            self.log(f"Testing connection to {router['host']}...")
+
+            ping_ok = self.ping_host(router["host"])
+            self.log(f"Ping test: {'successful' if ping_ok else 'failed'}")
+
+            self.test_netconf(router)
+            self.test_restconf(router)
+
+            self.stop_loading("Connection test completed.", 1)
+
+        except Exception as error:
+            self.stop_loading("Connection test failed.", 0)
+            self.log(f"Connection test failed: {error}")
+            messagebox.showerror("Connection Test Failed", str(error))
+
+        finally:
+            self.set_buttons_state("normal")
+
+    def ping_host(self, host):
+        param = "-n" if platform.system().lower() == "windows" else "-c"
+
+        result = subprocess.run(
+            ["ping", param, "1", host],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        return result.returncode == 0
+
+    def test_netconf(self, router):
+        try:
+            self.log(f"Testing NETCONF on {router['host']}:{router['netconf_port']}...")
+
+            with manager.connect(
+                host=router["host"],
+                port=router["netconf_port"],
+                username=router["username"],
+                password=router["password"],
+                hostkey_verify=False,
+                device_params={"name": "csr"},
+                look_for_keys=False,
+                allow_agent=False,
+                timeout=10
+            ) as m:
+                self.log("NETCONF test successful.")
+                self.log(f"NETCONF capabilities found: {len(list(m.server_capabilities))}")
+
+        except Exception as error:
+            self.log(f"NETCONF test failed: {error}")
+
+    def test_restconf(self, router):
+        try:
+            self.log(f"Testing RESTCONF on {router['restconf_base_url']}...")
+
+            url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
+
+            response = requests.get(
+                url,
+                auth=(router["username"], router["password"]),
+                headers={"Accept": "application/yang-data+json"},
+                verify=False,
+                timeout=10
+            )
+
+            if response.status_code in [200, 201, 204]:
+                self.log(f"RESTCONF test successful. Status: {response.status_code}")
+            else:
+                self.log(f"RESTCONF test failed. Status: {response.status_code}")
+                self.log(f"Response body: {response.text[:300]}")
+
+        except Exception as error:
+            self.log(f"RESTCONF test failed: {error}")
+
+    def get_device_info_threaded(self):
+        threading.Thread(target=self.get_device_info, daemon=True).start()
+
+    def get_device_info(self):
+        try:
+            self.set_buttons_state("disabled")
+            router = self.get_router_settings()
+
+            self.start_loading("Retrieving device info...")
+            self.log("Retrieving device info via RESTCONF...")
+
+            url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
+
+            response = requests.get(
+                url,
+                auth=(router["username"], router["password"]),
+                headers={"Accept": "application/yang-data+json"},
+                verify=False,
+                timeout=30
+            )
+
+            self.check_response(response, "Retrieve device native data")
+
+            data = response.json()
+            native = data.get("Cisco-IOS-XE-native:native", {})
+
+            hostname = native.get("hostname", "Unknown")
+
+            self.log("Device Info:")
+            self.log(f"Hostname: {hostname}")
+            self.log("Model: retrieve via RESTCONF operational endpoint if available")
+            self.log("Serial: retrieve via RESTCONF operational endpoint if available")
+            self.log("IOS-XE version: retrieve via RESTCONF operational endpoint if available")
+            self.log("Uptime: retrieve via RESTCONF operational endpoint if available")
+
+            self.stop_loading("Device info retrieved.", 1)
+
+        except Exception as error:
+            self.stop_loading("Device info failed.", 0)
+            self.log(f"Device info failed: {error}")
+            messagebox.showerror("Device Info Failed", str(error))
+
+        finally:
+            self.set_buttons_state("normal")
+
+    def get_running_config_restconf(self, router):
+        url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
+
+        response = requests.get(
+            url,
+            auth=(router["username"], router["password"]),
+            headers={"Accept": "application/yang-data+json"},
+            verify=False,
+            timeout=30
+        )
+
+        self.check_response(response, "Retrieve running config")
+
+        try:
+            return json.dumps(response.json(), indent=4)
+        except Exception:
+            return response.text
+
+    def backup_running_config(self, router):
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+
+        timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.json"
+        path = os.path.join(BACKUP_DIR, filename)
+
+        self.log("Creating running-config backup before deployment...")
+
+        content = self.get_running_config_restconf(router)
+
+        with open(path, "w", encoding="utf-8") as file:
+            file.write(content)
+
+        self.log(f"Backup saved: {path}")
+        return path
+
+    def diff_viewer_threaded(self):
+        threading.Thread(target=self.diff_viewer, daemon=True).start()
+
+    def get_normalized_running_config(self, router):
+        data = json.loads(self.get_running_config_restconf(router))
+        native = data.get("Cisco-IOS-XE-native:native", {})
+    
+        normalized = {
+            "hostname": native.get("hostname", ""),
+            "interfaces": [],
+            "ospf": {
+                "process_id": "",
+                "router_id": "",
+                "networks": []
+            }
+        }
+    
+        gig_interfaces = native.get("interface", {}).get("GigabitEthernet", [])
+    
+        for intf in gig_interfaces:
+            ip_primary = (
+                intf.get("ip", {})
+                .get("address", {})
+                .get("primary", {})
+            )
+    
+            normalized["interfaces"].append({
+                "name": f"GigabitEthernet{intf.get('name', '')}",
+                "description": intf.get("description", ""),
+                "ip": ip_primary.get("address", ""),
+                "netmask": ip_primary.get("mask", "")
+            })
+    
+        ospf_processes = (
+            native.get("router", {})
+            .get("Cisco-IOS-XE-ospf:router-ospf", {})
+            .get("ospf", {})
+            .get("process-id", [])
+        )
+    
+        if ospf_processes:
+            proc = ospf_processes[0]
+    
+            normalized["ospf"]["process_id"] = proc.get("id", "")
+            normalized["ospf"]["router_id"] = proc.get("router-id", "")
+    
+            for net in proc.get("network", []):
+                normalized["ospf"]["networks"].append({
+                    "ip": net.get("ip", ""),
+                    "mask": net.get("wildcard", ""),
+                    "area": net.get("area", 0)
+                })
+    
+        return json.dumps(normalized, indent=4)
+
+
+    def diff_viewer(self):
+        try:
+            self.set_buttons_state("disabled")
+    
+            router = self.get_router_settings()
+            config = self.get_selected_config()
+    
+            self.start_loading("Generating diff viewer...")
+            self.log("Generating diff viewer...")
+    
+            new_config = self.download_selected_config(config)
+    
+            if config["type"] == "NETCONF":
+                diff_text = (
+                    "Diff Viewer notice:\n\n"
+                    "The current running configuration is retrieved through RESTCONF as JSON,\n"
+                    "while the selected configuration is a NETCONF XML file.\n\n"
+                    "A direct line-by-line diff between JSON and XML is not useful.\n\n"
+                    "Selected NETCONF XML config:\n\n"
+                    f"{new_config}"
+                )
+    
+                self.root.after(0, lambda: self.show_diff_window(diff_text))
+                self.stop_loading("NETCONF XML preview loaded in Diff Viewer.", 1)
+                return
+    
+            # RESTCONF = normalized JSON vs JSON
+            current_config = self.get_normalized_running_config(router)
+            new_config = self.format_preview_content(new_config, "RESTCONF")
+    
+            diff = difflib.unified_diff(
+                current_config.splitlines(),
+                new_config.splitlines(),
+                fromfile="Current normalized config",
+                tofile=f"New config: {config['name']}",
+                lineterm=""
+            )
+    
+            diff_text = "\n".join(diff)
+    
+            if not diff_text.strip():
+                diff_text = "No differences found."
+    
+            self.root.after(0, lambda: self.show_diff_window(diff_text))
+            self.stop_loading("Diff generated.", 1)
+    
+        except Exception as error:
+            self.stop_loading("Diff failed.", 0)
+            self.log(f"Diff failed: {error}")
+            messagebox.showerror("Diff Failed", str(error))
+    
+        finally:
+            self.root.after(0, lambda: self.set_buttons_state("normal"))
+
+
+    def show_diff_window(self, diff_text):
+        window = ctk.CTkToplevel(self.root)
+
+        window.transient(self.root)
+        window.lift()
+        window.focus_force()
+        window.attributes("-topmost", True)
+        window.after(300, lambda: window.attributes("-topmost", False))
+
+        window.title("Diff Viewer")
+        window.geometry("1050x750")
+        window.minsize(850, 550)
+
+        ctk.CTkLabel(
+            window,
+            text="Diff Viewer - Current Config vs New Config",
+            font=ctk.CTkFont(size=20, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 10))
+
+        textbox = ctk.CTkTextbox(
+            window,
+            font=ctk.CTkFont(family="Consolas", size=12),
+            corner_radius=10
+        )
+        textbox.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+
+        textbox.insert("1.0", diff_text)
+        textbox.configure(state="disabled")
 
     def push_config_threaded(self):
         threading.Thread(target=self.push_config, daemon=True).start()
@@ -671,6 +991,11 @@ class ModernConfigPushGUI:
         else:
             message += f"Target port: {router['restconf_port']}\n"
 
+        if self.backup_before_deploy_var.get():
+            message += "\nBackup before deploy: enabled\n"
+        else:
+            message += "\nBackup before deploy: disabled\n"
+
         message += "\nAre you sure you want to continue?"
 
         return messagebox.askyesno("Confirm Deployment", message)
@@ -687,21 +1012,20 @@ class ModernConfigPushGUI:
                 self.stop_loading("Deployment cancelled.", 0)
                 return
 
-            self.start_loading(
-                f"{config['type']} detected - deploying {config['name']}..."
-            )
+            self.start_loading(f"{config['type']} detected - deploying {config['name']}...")
 
             self.log(f"{config['type']} detected based on file extension.")
             self.log(f"Target router: {router['host']}")
+
+            if self.backup_before_deploy_var.get():
+                self.backup_running_config(router)
 
             config_content = self.download_selected_config(config)
 
             if config["type"] == "NETCONF":
                 self.deploy_netconf(config_content, router)
-
             elif config["type"] == "RESTCONF":
                 self.deploy_restconf(config_content, router)
-
             else:
                 raise ValueError("Unsupported config type.")
 
@@ -715,11 +1039,7 @@ class ModernConfigPushGUI:
 
         finally:
             self.set_buttons_state("normal")
-
-    # =========================
-    # NETCONF
-    # =========================
-
+            
     def deploy_netconf(self, config_xml, router):
         if not config_xml.startswith("<config"):
             raise ValueError("Selected XML file is not a valid NETCONF <config> file.")
@@ -782,10 +1102,6 @@ class ModernConfigPushGUI:
             finally:
                 self.log("Unlocking candidate datastore...")
                 m.unlock(target="candidate")
-
-    # =========================
-    # RESTCONF
-    # =========================
 
     def deploy_restconf(self, config_json_text, router):
         self.log("Parsing JSON config...")
@@ -947,10 +1263,6 @@ class ModernConfigPushGUI:
 
         self.check_response(resp, "Retrieve running config")
 
-    # =========================
-    # Log Export
-    # =========================
-
     def export_log(self):
         content = self.log_box.get("1.0", "end").strip()
 
@@ -976,7 +1288,6 @@ class ModernConfigPushGUI:
         self.log(f"Log exported to: {path}")
         messagebox.showinfo("Export Log", "Log exported successfully.")
 
-
 def main():
     root = ctk.CTk()
     ModernConfigPushGUI(root)
@@ -984,4 +1295,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()        

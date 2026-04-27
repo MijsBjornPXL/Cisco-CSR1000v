@@ -1,0 +1,9 @@
+{
+    "Home_Bjorn": {
+        "host": "bjornmijs.asuscomm.com",
+        "username": "bjorn",
+        "password": "01031100",
+        "netconf_port": "9097",
+        "restconf_port": "9096"
+    }
+}
