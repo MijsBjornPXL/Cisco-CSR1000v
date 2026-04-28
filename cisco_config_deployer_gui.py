@@ -1,3 +1,7 @@
+import uuid
+import random
+import paramiko
+import xml.etree.ElementTree as ET
 import difflib
 import json
 import os
@@ -264,7 +268,17 @@ class ModernConfigPushGUI:
             fg_color="#444444",
             hover_color="#555555"
         )
-        self.clear_button.pack(side="left")
+        self.clear_button.pack(side="left", padx=(0, 12))
+
+        self.deploy_vm_button = ctk.CTkButton(
+            button_frame,
+            text="🖥 Deploy Router VM",
+            command=self.open_vm_deployer_window,
+            height=40,
+            fg_color="#9333EA",
+            hover_color="#7E22CE"
+        )
+        self.deploy_vm_button.pack(side="left")
 
         options_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         options_frame.pack(fill="x", padx=22, pady=(0, 10))
@@ -319,34 +333,30 @@ class ModernConfigPushGUI:
     def load_local_configs(self):
         try:
             self.configs = []
-    
             files = os.listdir(LOCAL_CONFIG_DIR)
-    
+
             for filename in files:
                 if filename.lower().endswith((".xml", ".json")):
                     path = os.path.join(LOCAL_CONFIG_DIR, filename)
-    
                     self.configs.append({
                         "name": filename,
                         "local_path": path,
                         "type": self.get_config_type(filename)
                     })
-    
+
             if not self.configs:
                 self.config_dropdown.configure(values=["No local configs found"])
                 self.config_var.set("No local configs found")
                 self.log("No local configs found.")
                 return
-    
+
             values = [f"{cfg['name']} ({cfg['type']})" for cfg in self.configs]
             self.config_dropdown.configure(values=values)
             self.config_var.set(values[0])
-    
             self.log(f"Loaded {len(self.configs)} local config(s).")
-    
+
         except Exception as e:
             self.log(f"Failed loading local configs: {e}")
-
 
     def toggle_password_visibility(self):
         self.password_visible = not self.password_visible
@@ -364,6 +374,19 @@ class ModernConfigPushGUI:
         self.log_box.see("end")
         self.root.update_idletasks()
 
+
+    def update_last_log_line(self, message):
+        timestamp = time.strftime("%H:%M:%S")
+
+        try:
+            self.log_box.delete("end-2l", "end-1l")
+            self.log_box.insert("end", f"[{timestamp}] {message}\n")
+            self.log_box.see("end")
+            self.root.update_idletasks()
+        except Exception:
+            self.log(message)
+            
+            
     def clear_log(self):
         self.log_box.delete("1.0", "end")
 
@@ -380,6 +403,7 @@ class ModernConfigPushGUI:
         self.push_button.configure(state=state)
         self.export_log_button.configure(state=state)
         self.clear_button.configure(state=state)
+        self.deploy_vm_button.configure(state=state)
 
     def start_loading(self, message):
         self.is_loading = True
@@ -508,35 +532,34 @@ class ModernConfigPushGUI:
             self.set_buttons_state("disabled")
             self.start_loading("Syncing configs from GitHub...")
             self.log("Fetching configs from GitHub...")
-    
+
             response = requests.get(GITHUB_API_URL, timeout=30)
             response.raise_for_status()
-    
+
             files = response.json()
             downloaded = 0
-    
+
             for item in files:
                 if item["type"] == "file" and item["name"].lower().endswith((".xml", ".json")):
                     file_resp = requests.get(item["download_url"], timeout=30)
                     file_resp.raise_for_status()
-    
+
                     local_path = os.path.join(LOCAL_CONFIG_DIR, item["name"])
-    
+
                     with open(local_path, "w", encoding="utf-8") as f:
                         f.write(file_resp.text)
-    
+
                     downloaded += 1
-    
+
             self.log(f"Downloaded {downloaded} config(s) from GitHub.")
             self.load_local_configs()
-    
             self.stop_loading("Configs refreshed.", 1)
-    
+
         except Exception as error:
             self.stop_loading("Refresh failed.", 0)
             self.log(f"GitHub sync failed: {error}")
             messagebox.showerror("GitHub Error", str(error))
-    
+
         finally:
             self.set_buttons_state("normal")
 
@@ -559,16 +582,16 @@ class ModernConfigPushGUI:
 
     def download_selected_config(self, config):
         path = config["local_path"]
-    
+
         self.log(f"Loading local config: {config['name']}")
         self.set_status(f"Loading {config['name']}...", 0.25)
-    
+
         with open(path, "r", encoding="utf-8") as file:
             content = file.read().strip()
-    
+
         if config["type"] == "NETCONF" and "noshutdown" in content.lower():
             raise ValueError("Local XML contains unsupported <noshutdown/> tag.")
-    
+
         return content
 
     def preview_config_threaded(self):
@@ -780,7 +803,6 @@ class ModernConfigPushGUI:
 
             data = response.json()
             native = data.get("Cisco-IOS-XE-native:native", {})
-
             hostname = native.get("hostname", "Unknown")
 
             self.log("Device Info:")
@@ -826,7 +848,6 @@ class ModernConfigPushGUI:
         path = os.path.join(BACKUP_DIR, filename)
 
         self.log("Creating running-config backup before deployment...")
-
         content = self.get_running_config_restconf(router)
 
         with open(path, "w", encoding="utf-8") as file:
@@ -841,7 +862,7 @@ class ModernConfigPushGUI:
     def get_normalized_running_config(self, router):
         data = json.loads(self.get_running_config_restconf(router))
         native = data.get("Cisco-IOS-XE-native:native", {})
-    
+
         normalized = {
             "hostname": native.get("hostname", ""),
             "interfaces": [],
@@ -851,58 +872,55 @@ class ModernConfigPushGUI:
                 "networks": []
             }
         }
-    
+
         gig_interfaces = native.get("interface", {}).get("GigabitEthernet", [])
-    
+
         for intf in gig_interfaces:
             ip_primary = (
                 intf.get("ip", {})
                 .get("address", {})
                 .get("primary", {})
             )
-    
+
             normalized["interfaces"].append({
                 "name": f"GigabitEthernet{intf.get('name', '')}",
                 "description": intf.get("description", ""),
                 "ip": ip_primary.get("address", ""),
                 "netmask": ip_primary.get("mask", "")
             })
-    
+
         ospf_processes = (
             native.get("router", {})
             .get("Cisco-IOS-XE-ospf:router-ospf", {})
             .get("ospf", {})
             .get("process-id", [])
         )
-    
+
         if ospf_processes:
             proc = ospf_processes[0]
-    
             normalized["ospf"]["process_id"] = proc.get("id", "")
             normalized["ospf"]["router_id"] = proc.get("router-id", "")
-    
+
             for net in proc.get("network", []):
                 normalized["ospf"]["networks"].append({
                     "ip": net.get("ip", ""),
                     "mask": net.get("wildcard", ""),
                     "area": net.get("area", 0)
                 })
-    
-        return json.dumps(normalized, indent=4)
 
+        return json.dumps(normalized, indent=4)
 
     def diff_viewer(self):
         try:
             self.set_buttons_state("disabled")
-    
             router = self.get_router_settings()
             config = self.get_selected_config()
-    
+
             self.start_loading("Generating diff viewer...")
             self.log("Generating diff viewer...")
-    
+
             new_config = self.download_selected_config(config)
-    
+
             if config["type"] == "NETCONF":
                 diff_text = (
                     "Diff Viewer notice:\n\n"
@@ -912,15 +930,14 @@ class ModernConfigPushGUI:
                     "Selected NETCONF XML config:\n\n"
                     f"{new_config}"
                 )
-    
+
                 self.root.after(0, lambda: self.show_diff_window(diff_text))
                 self.stop_loading("NETCONF XML preview loaded in Diff Viewer.", 1)
                 return
-    
-            # RESTCONF = normalized JSON vs JSON
+
             current_config = self.get_normalized_running_config(router)
             new_config = self.format_preview_content(new_config, "RESTCONF")
-    
+
             diff = difflib.unified_diff(
                 current_config.splitlines(),
                 new_config.splitlines(),
@@ -928,23 +945,22 @@ class ModernConfigPushGUI:
                 tofile=f"New config: {config['name']}",
                 lineterm=""
             )
-    
+
             diff_text = "\n".join(diff)
-    
+
             if not diff_text.strip():
                 diff_text = "No differences found."
-    
+
             self.root.after(0, lambda: self.show_diff_window(diff_text))
             self.stop_loading("Diff generated.", 1)
-    
+
         except Exception as error:
             self.stop_loading("Diff failed.", 0)
             self.log(f"Diff failed: {error}")
             messagebox.showerror("Diff Failed", str(error))
-    
+
         finally:
             self.root.after(0, lambda: self.set_buttons_state("normal"))
-
 
     def show_diff_window(self, diff_text):
         window = ctk.CTkToplevel(self.root)
@@ -997,13 +1013,11 @@ class ModernConfigPushGUI:
             message += "\nBackup before deploy: disabled\n"
 
         message += "\nAre you sure you want to continue?"
-
         return messagebox.askyesno("Confirm Deployment", message)
 
     def push_config(self):
         try:
             self.set_buttons_state("disabled")
-
             config = self.get_selected_config()
             router = self.get_router_settings()
 
@@ -1013,7 +1027,6 @@ class ModernConfigPushGUI:
                 return
 
             self.start_loading(f"{config['type']} detected - deploying {config['name']}...")
-
             self.log(f"{config['type']} detected based on file extension.")
             self.log(f"Target router: {router['host']}")
 
@@ -1039,7 +1052,7 @@ class ModernConfigPushGUI:
 
         finally:
             self.set_buttons_state("normal")
-            
+
     def deploy_netconf(self, config_xml, router):
         if not config_xml.startswith("<config"):
             raise ValueError("Selected XML file is not a valid NETCONF <config> file.")
@@ -1058,7 +1071,6 @@ class ModernConfigPushGUI:
             allow_agent=False,
             timeout=30
         ) as m:
-
             caps = list(m.server_capabilities)
 
             if not any("candidate" in cap for cap in caps):
@@ -1116,7 +1128,6 @@ class ModernConfigPushGUI:
 
         self.delete_ospf(config["ospf"], router)
         self.post_ospf_process(config["ospf"], router)
-
         self.verify_running_config(router)
 
         self.log("RESTCONF deployment successful.")
@@ -1288,6 +1299,327 @@ class ModernConfigPushGUI:
         self.log(f"Log exported to: {path}")
         messagebox.showinfo("Export Log", "Log exported successfully.")
 
+    # =========================
+    # KVM Router VM Deployment
+    # =========================
+
+    def open_vm_deployer_window(self):
+        window = ctk.CTkToplevel(self.root)
+        window.title("Deploy Router VM")
+        window.geometry("700x660")
+        window.minsize(650, 560)
+
+        window.transient(self.root)
+        window.lift()
+        window.focus_force()
+        window.attributes("-topmost", True)
+        window.after(300, lambda: window.attributes("-topmost", False))
+
+        frame = ctk.CTkFrame(window, corner_radius=14)
+        frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            frame,
+            text="Deploy Cisco Router VM",
+            font=ctk.CTkFont(size=20, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 10))
+
+        def add_labeled_entry(parent, label_text, placeholder_text="", show=None, default_value=""):
+            ctk.CTkLabel(
+                parent,
+                text=label_text,
+                font=ctk.CTkFont(size=12),
+                text_color="gray75"
+            ).pack(anchor="w", padx=15, pady=(8, 2))
+
+            entry = ctk.CTkEntry(
+                parent,
+                placeholder_text=placeholder_text,
+                show=show
+            )
+            entry.pack(fill="x", padx=15, pady=(0, 4))
+
+            if default_value:
+                entry.insert(0, default_value)
+
+            return entry
+
+        self.kvm_host_entry = add_labeled_entry(
+            frame,
+            "KVM Host / IP",
+            "Enter KVM hostname or IP",
+            default_value="PLEX-Server"
+        )
+
+        self.kvm_user_entry = add_labeled_entry(
+            frame,
+            "SSH Username",
+            "Enter SSH username",
+            default_value="bjorn"
+        )
+
+        self.kvm_password_entry = add_labeled_entry(
+            frame,
+            "SSH Password",
+            "Enter SSH password",
+            show="*"
+        )
+
+        self.base_vm_entry = add_labeled_entry(
+            frame,
+            "Base VM Name",
+            "Enter base VM name",
+            default_value="CRS1000"
+        )
+
+        self.new_vm_entry = add_labeled_entry(
+            frame,
+            "New VM Name",
+            "Enter new VM name",
+            default_value="CSR-AUTO-01"
+        )
+
+        self.source_qcow_entry = add_labeled_entry(
+            frame,
+            "Source QCOW2 Path",
+            "Enter source QCOW2 path",
+            default_value="/mnt/RAID5/Virtual Machines/csr1000vng-universalk9.17.03.05-serial/virtioa_deploy.qcow2"
+        )
+
+        self.libvirt_network_entry = add_labeled_entry(
+            frame,
+            "Libvirt DHCP Network",
+            "Enter libvirt network name",
+            default_value="br0"
+        )
+
+        ctk.CTkButton(
+            frame,
+            text="🚀 Deploy VM",
+            command=lambda: self.deploy_router_vm_threaded(window),
+            height=40,
+            fg_color="#15803D",
+            hover_color="#166534"
+        ).pack(anchor="w", padx=15, pady=(18, 10))
+
+    def deploy_router_vm_threaded(self, window):
+        threading.Thread(target=lambda: self.deploy_router_vm(window), daemon=True).start()
+
+    def ssh_exec(self, ssh, command):
+        stdin, stdout, stderr = ssh.exec_command(command)
+        out = stdout.read().decode(errors="ignore")
+        err = stderr.read().decode(errors="ignore")
+        code = stdout.channel.recv_exit_status()
+
+        if code != 0:
+            raise RuntimeError(f"Command failed:\n{command}\n\n{err}")
+
+        return out.strip()
+
+    def generate_mac(self):
+        return "52:54:00:%02x:%02x:%02x" % (
+            random.randint(0x00, 0xFF),
+            random.randint(0x00, 0xFF),
+            random.randint(0x00, 0xFF)
+        )
+
+    def deploy_router_vm(self, window):
+        ssh = None
+
+        try:
+            self.set_buttons_state("disabled")
+            self.start_loading("Deploying router VM...")
+
+            kvm_host = self.kvm_host_entry.get().strip()
+            kvm_user = self.kvm_user_entry.get().strip()
+            kvm_password = self.kvm_password_entry.get()
+            base_vm = self.base_vm_entry.get().strip()
+            new_vm = self.new_vm_entry.get().strip()
+            source_qcow = self.source_qcow_entry.get().strip()
+            libvirt_network = self.libvirt_network_entry.get().strip()
+
+            if not all([kvm_host, kvm_user, kvm_password, base_vm, new_vm, source_qcow, libvirt_network]):
+                raise ValueError("All VM deployment fields are required.")
+
+            self.log(f"Connecting to KVM host {kvm_host}...")
+
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(
+                hostname=kvm_host,
+                username=kvm_user,
+                password=kvm_password,
+                timeout=15
+            )
+
+            self.log(f"Reading XML from base VM: {base_vm}")
+            base_xml = self.ssh_exec(ssh, f"sudo virsh dumpxml {base_vm}")
+
+            source_dir = os.path.dirname(source_qcow)
+            new_disk = f"{source_dir}/{new_vm}.qcow2"
+            remote_xml = f"/tmp/{new_vm}.xml"
+
+            self.log(f"Cloning disk to {new_disk}...")
+            self.ssh_exec(ssh, f"sudo cp '{source_qcow}' '{new_disk}'")
+            self.ssh_exec(ssh, f"sudo chown libvirt-qemu:libvirt-qemu '{new_disk}' || true")
+
+            root = ET.fromstring(base_xml)
+
+            name_node = root.find("name")
+            if name_node is not None:
+                name_node.text = new_vm
+
+            uuid_node = root.find("uuid")
+            if uuid_node is not None:
+                uuid_node.text = str(uuid.uuid4())
+
+            disk_source = root.find(".//devices/disk/source")
+            if disk_source is not None:
+                disk_source.set("file", new_disk)
+
+            interfaces = root.findall(".//devices/interface")
+            management_mac = None
+
+            for index, intf in enumerate(interfaces):
+                mac_node = intf.find("mac")
+                if mac_node is not None:
+                    new_mac = self.generate_mac()
+                    mac_node.set("address", new_mac)
+
+                    if index == 0:
+                        management_mac = new_mac
+
+                if index == 0:
+                    intf.set("type", "network")
+
+                    source_node = intf.find("source")
+                    if source_node is None:
+                        source_node = ET.SubElement(intf, "source")
+
+                    source_node.attrib.clear()
+                    source_node.set("network", libvirt_network)
+
+            new_xml = ET.tostring(root, encoding="unicode")
+
+            self.log(f"Uploading generated XML to {remote_xml}...")
+            self.ssh_exec(ssh, f"cat > '{remote_xml}' << 'EOF'\n{new_xml}\nEOF")
+
+            self.log(f"Defining VM {new_vm}...")
+            self.ssh_exec(ssh, f"sudo virsh define '{remote_xml}'")
+
+            self.log(f"Starting VM {new_vm}...")
+            self.ssh_exec(ssh, f"sudo virsh start {new_vm}")
+
+            found_ip = ""
+
+            if management_mac:
+                self.log(f"Waiting for DHCP lease for Gi1 MAC {management_mac}...")
+
+                max_attempts = 60
+
+                for attempt in range(max_attempts):
+                    progress_msg = f"Checking DHCP/ARP... ({attempt + 1}/{max_attempts})"
+
+                    self.set_status(progress_msg, 0.95)
+
+                    if attempt == 0:
+                        self.log(progress_msg)
+                    else:
+                        self.update_last_log_line(progress_msg)
+
+                    found_ip = ""
+
+                    # 1. Check libvirt DHCP leases
+                    leases = self.ssh_exec(
+                        ssh,
+                        f"sudo virsh net-dhcp-leases {libvirt_network} || true"
+                    )
+
+                    for line in leases.splitlines():
+                        if management_mac.lower() in line.lower():
+                            parts = line.split()
+
+                            for part in parts:
+                                if "/" in part and "." in part:
+                                    found_ip = part.split("/")[0]
+                                    break
+
+                    # 2. Check ARP cache
+                    if not found_ip:
+                        arp_output = self.ssh_exec(
+                            ssh,
+                            f"ip neigh | grep -i '{management_mac}' || true"
+                        )
+
+                        for line in arp_output.splitlines():
+                            parts = line.split()
+
+                            if parts and "." in parts[0]:
+                                found_ip = parts[0]
+                                break
+
+                    # 3. Every 10 attempts: ping sweep subnet to populate ARP cache
+                    if not found_ip and attempt % 10 == 0:
+                        self.log("No ARP entry yet, scanning local subnet...")
+
+                        scan_cmd = (
+                            "IP=$(ip -4 -o addr show br0 | awk '{print $4}' | cut -d/ -f1 | head -1); "
+                            "PREFIX=${IP%.*}; "
+                            "for i in $(seq 1 254); do ping -c1 -W1 ${PREFIX}.${i} >/dev/null 2>&1 & done; "
+                            "wait; "
+                            f"ip neigh | grep -i '{management_mac}' || true"
+                        )
+
+                        arp_output = self.ssh_exec(ssh, scan_cmd)
+
+                        for line in arp_output.splitlines():
+                            parts = line.split()
+
+                            if parts and "." in parts[0]:
+                                found_ip = parts[0]
+                                break
+
+                    if found_ip:
+                        self.update_last_log_line(
+                            f"Management IP found for Gi1: {found_ip}"
+                        )
+                        self.log(f"DHCP IP found: {found_ip}")
+                        break
+
+                    time.sleep(2)
+                    
+                    
+            if found_ip:
+                self.log(f"DHCP IP found: {found_ip}")
+                self.root.after(0, lambda: self.host_entry.delete(0, "end"))
+                self.root.after(0, lambda: self.host_entry.insert(0, found_ip))
+
+                messagebox.showinfo(
+                    "VM Deployed",
+                    f"VM {new_vm} deployed successfully.\n\nIP address: {found_ip}"
+                )
+            else:
+                self.log("VM deployed, but no DHCP lease found yet.")
+                messagebox.showinfo(
+                    "VM Deployed",
+                    f"VM {new_vm} deployed successfully.\n\nNo DHCP lease found yet."
+                )
+
+            self.stop_loading("Router VM deployed.", 1)
+            self.root.after(0, window.destroy)
+
+        except Exception as error:
+            self.stop_loading("VM deployment failed.", 0)
+            self.log(f"VM deployment failed: {error}")
+            messagebox.showerror("VM Deployment Failed", str(error))
+
+        finally:
+            if ssh:
+                ssh.close()
+
+            self.set_buttons_state("normal")
+
+
 def main():
     root = ctk.CTk()
     ModernConfigPushGUI(root)
@@ -1295,4 +1627,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()        
+    main()
