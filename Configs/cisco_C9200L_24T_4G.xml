@@ -4,22 +4,23 @@
     <hostname>SW-NETCONF-DEMO</hostname>
 
     <vlan>
-      <vlan-list>
-        <id>10</id>
-        <name>USERS</name>
-      </vlan-list>
-      <vlan-list>
-        <id>20</id>
-        <name>SERVERS</name>
-      </vlan-list>
-      <vlan-list>
-        <id>30</id>
-        <name>WIFI</name>
-      </vlan-list>
-      <vlan-list>
-        <id>99</id>
-        <name>MGMT</name>
-      </vlan-list>
+      <id>10</id>
+      <name>USERS</name>
+    </vlan>
+
+    <vlan>
+      <id>20</id>
+      <name>SERVERS</name>
+    </vlan>
+
+    <vlan>
+      <id>30</id>
+      <name>WIFI</name>
+    </vlan>
+
+    <vlan>
+      <id>99</id>
+      <name>MGMT</name>
     </vlan>
 
     <interface>
@@ -29,7 +30,7 @@
         <ip>
           <address>
             <primary>
-              <address>10.10.10.100</address>
+              <address>10.10.10.10</address>
               <mask>255.255.255.0</mask>
             </primary>
           </address>

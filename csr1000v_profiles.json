@@ -12,5 +12,12 @@
         "password": "01031100",
         "netconf_port": "830",
         "restconf_port": "443"
+    },
+    "cisco_C9200L": {
+        "host": "10.10.10.10",
+        "username": "bjorn",
+        "password": "01031100",
+        "netconf_port": "830",
+        "restconf_port": "443"
     }
 }

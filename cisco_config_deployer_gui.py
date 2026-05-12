@@ -95,6 +95,16 @@ class ModernConfigPushGUI:
         )
         self.profile_dropdown.pack(side="left", padx=(0, 12))
 
+
+        ctk.CTkButton(
+            profile_row,
+            text="📂 Load Profile",
+            command=self.load_selected_profile,
+            height=38,
+            fg_color="#0891B2",
+            hover_color="#0E7490"
+        ).pack(side="left", padx=(0, 12))        
+        
         ctk.CTkButton(
             profile_row,
             text="💾 Save Profile",
@@ -104,14 +114,6 @@ class ModernConfigPushGUI:
             hover_color="#6D28D9"
         ).pack(side="left", padx=(0, 12))
 
-        ctk.CTkButton(
-            profile_row,
-            text="📂 Load Profile",
-            command=self.load_selected_profile,
-            height=38,
-            fg_color="#0891B2",
-            hover_color="#0E7490"
-        ).pack(side="left", padx=(0, 12))
 
         ctk.CTkButton(
             profile_row,
