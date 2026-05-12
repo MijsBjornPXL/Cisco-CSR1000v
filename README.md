@@ -165,6 +165,8 @@ This repository can be used for:
 - Saved profiles may store passwords in plain text for lab convenience
 - Do not use plain text credential storage in production environments
 - Some configuration paths may vary between Cisco platforms and software versions
+- Config files are cached locally in the `Configs/` folder.
+- GitHub is only contacted when using the `Refresh Configs` button.
 
 ---
 
