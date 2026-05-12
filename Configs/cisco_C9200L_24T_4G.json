@@ -1,0 +1,21 @@
+{
+    "hostname": "SW-RESTCONF-DEMO",
+
+    "interfaces": [
+        {
+            "name": "GigabitEthernet1/0/1",
+            "description": "RESTCONF DEMO - ACCESS VLAN 10",
+            "enabled": true
+        },
+        {
+            "name": "GigabitEthernet1/0/2",
+            "description": "RESTCONF DEMO - ACCESS VLAN 20",
+            "enabled": true
+        },
+        {
+            "name": "GigabitEthernet1/0/24",
+            "description": "RESTCONF DEMO - TRUNK TO ROUTER/SWITCH",
+            "enabled": true
+        }
+    ]
+}
