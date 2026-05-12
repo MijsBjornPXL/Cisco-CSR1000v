@@ -1,0 +1,31 @@
+PREP switch NETCONF/RESTCONF:
+
+enable
+configure terminal
+
+vlan 99
+ name MGMT
+
+interface vlan 99
+ ip address 10.10.10.10 255.255.255.0
+ no shutdown
+
+ip default-gateway 10.0.0.1
+
+interface GigabitEthernet1/0/1
+ switchport mode access
+ switchport access vlan 99
+ no shutdown
+
+netconf-yang
+restconf
+
+ip http secure-server
+ip http authentication local
+
+username bjorn privilege 15 secret 01031100
+
+end
+write memory
+
+------------------------------------

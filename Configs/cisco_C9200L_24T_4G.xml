@@ -1,0 +1,92 @@
+<config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+
+    <hostname>SW-NETCONF-DEMO</hostname>
+
+    <vlan>
+      <vlan-list>
+        <id>10</id>
+        <name>USERS</name>
+      </vlan-list>
+      <vlan-list>
+        <id>20</id>
+        <name>SERVERS</name>
+      </vlan-list>
+      <vlan-list>
+        <id>30</id>
+        <name>WIFI</name>
+      </vlan-list>
+      <vlan-list>
+        <id>99</id>
+        <name>MGMT</name>
+      </vlan-list>
+    </vlan>
+
+    <interface>
+      <Vlan>
+        <name>99</name>
+        <description>Management VLAN configured via NETCONF</description>
+        <ip>
+          <address>
+            <primary>
+              <address>10.10.10.100</address>
+              <mask>255.255.255.0</mask>
+            </primary>
+          </address>
+        </ip>
+      </Vlan>
+
+      <GigabitEthernet>
+        <name>1/0/1</name>
+        <description>ACCESS PORT VLAN 10 - NETCONF DEMO</description>
+        <switchport>
+          <mode>
+            <access/>
+          </mode>
+          <access>
+            <vlan>
+              <vlan>10</vlan>
+            </vlan>
+          </access>
+        </switchport>
+      </GigabitEthernet>
+
+      <GigabitEthernet>
+        <name>1/0/2</name>
+        <description>ACCESS PORT VLAN 20 - NETCONF DEMO</description>
+        <switchport>
+          <mode>
+            <access/>
+          </mode>
+          <access>
+            <vlan>
+              <vlan>20</vlan>
+            </vlan>
+          </access>
+        </switchport>
+      </GigabitEthernet>
+
+      <GigabitEthernet>
+        <name>1/0/24</name>
+        <description>TRUNK PORT - NETCONF DEMO</description>
+        <switchport>
+          <mode>
+            <trunk/>
+          </mode>
+          <trunk>
+            <allowed>
+              <vlan>
+                <vlans>10,20,30,99</vlans>
+              </vlan>
+            </allowed>
+          </trunk>
+        </switchport>
+      </GigabitEthernet>
+    </interface>
+
+    <ip>
+      <default-gateway>10.10.10.1</default-gateway>
+    </ip>
+
+  </native>
+</config>

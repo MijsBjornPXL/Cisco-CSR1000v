@@ -374,7 +374,6 @@ class ModernConfigPushGUI:
         self.log_box.see("end")
         self.root.update_idletasks()
 
-
     def update_last_log_line(self, message):
         timestamp = time.strftime("%H:%M:%S")
 
@@ -385,8 +384,7 @@ class ModernConfigPushGUI:
             self.root.update_idletasks()
         except Exception:
             self.log(message)
-            
-            
+
     def clear_log(self):
         self.log_box.delete("1.0", "end")
 
@@ -787,30 +785,23 @@ class ModernConfigPushGUI:
             router = self.get_router_settings()
 
             self.start_loading("Retrieving device info...")
-            self.log("Retrieving device info via RESTCONF...")
+            self.log("Retrieving device info via NETCONF...")
 
-            url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
+            content = self.get_running_config_netconf(router)
 
-            response = requests.get(
-                url,
-                auth=(router["username"], router["password"]),
-                headers={"Accept": "application/yang-data+json"},
-                verify=False,
-                timeout=30
-            )
-
-            self.check_response(response, "Retrieve device native data")
-
-            data = response.json()
-            native = data.get("Cisco-IOS-XE-native:native", {})
-            hostname = native.get("hostname", "Unknown")
+            hostname = "Unknown"
+            try:
+                root = ET.fromstring(content)
+                for elem in root.iter():
+                    if elem.tag.endswith("hostname") and elem.text:
+                        hostname = elem.text
+                        break
+            except Exception:
+                pass
 
             self.log("Device Info:")
             self.log(f"Hostname: {hostname}")
-            self.log("Model: retrieve via RESTCONF operational endpoint if available")
-            self.log("Serial: retrieve via RESTCONF operational endpoint if available")
-            self.log("IOS-XE version: retrieve via RESTCONF operational endpoint if available")
-            self.log("Uptime: retrieve via RESTCONF operational endpoint if available")
+            self.log("Running config retrieved via NETCONF.")
 
             self.stop_loading("Device info retrieved.", 1)
 
@@ -822,62 +813,60 @@ class ModernConfigPushGUI:
         finally:
             self.set_buttons_state("normal")
 
+    def get_running_config_restconf(self, router):
+        url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
 
-        def backup_running_config(self, router, config_type="RESTCONF"):
-            os.makedirs(BACKUP_DIR, exist_ok=True)
-        
-            timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-        
-            if config_type == "NETCONF":
-                filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.xml"
-            else:
-                filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.json"
-        
-            path = os.path.join(BACKUP_DIR, filename)
-        
-            self.log("Creating running-config backup before deployment...")
-        
-            if config_type == "NETCONF":
-                content = self.get_running_config_netconf(router)
-            else:
-                content = self.get_running_config_restconf(router)
-        
-            with open(path, "w", encoding="utf-8") as file:
-                file.write(content)
-        
-            self.log(f"Backup saved: {path}")
-            return path
-            
-        def get_running_config_netconf(self, router):
-            filter_xml = """
-            <filter xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
-            <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native"/>
-            </filter>
-            """
-        
-            with manager.connect(
-                host=router["host"],
-                port=router["netconf_port"],
-                username=router["username"],
-                password=router["password"],
-                hostkey_verify=False,
-                device_params={"name": "csr"},
-                look_for_keys=False,
-                allow_agent=False,
-                timeout=30
-            ) as m:
-                result = m.get_config(source="running", filter=filter_xml)
-                return result.xml
+        response = requests.get(
+            url,
+            auth=(router["username"], router["password"]),
+            headers={"Accept": "application/yang-data+json"},
+            verify=False,
+            timeout=30
+        )
+
+        self.check_response(response, "Retrieve running config")
+
+        try:
+            return json.dumps(response.json(), indent=4)
+        except Exception:
+            return response.text
+
+    def get_running_config_netconf(self, router):
+        filter_xml = """
+<filter xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native"/>
+</filter>
+"""
+
+        with manager.connect(
+            host=router["host"],
+            port=router["netconf_port"],
+            username=router["username"],
+            password=router["password"],
+            hostkey_verify=False,
+            device_params={"name": "csr"},
+            look_for_keys=False,
+            allow_agent=False,
+            timeout=30
+        ) as m:
+            result = m.get_config(source="running", filter=filter_xml)
+            return result.xml
 
     def backup_running_config(self, router, config_type="RESTCONF"):
         os.makedirs(BACKUP_DIR, exist_ok=True)
 
         timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-        filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.json"
-        path = os.path.join(BACKUP_DIR, filename)
 
         self.log("Creating running-config backup before deployment...")
-        content = self.get_running_config_restconf(router)
+
+        if config_type == "NETCONF":
+            filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.xml"
+            content = self.get_running_config_netconf(router)
+        else:
+            filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.json"
+            content = self.get_running_config_restconf(router)
+
+        path = os.path.join(BACKUP_DIR, filename)
 
         with open(path, "w", encoding="utf-8") as file:
             file.write(content)
@@ -951,17 +940,21 @@ class ModernConfigPushGUI:
             new_config = self.download_selected_config(config)
 
             if config["type"] == "NETCONF":
-                diff_text = (
-                    "Diff Viewer notice:\n\n"
-                    "The current running configuration is retrieved through RESTCONF as JSON,\n"
-                    "while the selected configuration is a NETCONF XML file.\n\n"
-                    "A direct line-by-line diff between JSON and XML is not useful.\n\n"
-                    "Selected NETCONF XML config:\n\n"
-                    f"{new_config}"
+                current_config = self.get_running_config_netconf(router)
+                diff = difflib.unified_diff(
+                    current_config.splitlines(),
+                    new_config.splitlines(),
+                    fromfile="Current NETCONF running config",
+                    tofile=f"New config: {config['name']}",
+                    lineterm=""
                 )
+                diff_text = "\n".join(diff)
+
+                if not diff_text.strip():
+                    diff_text = "No differences found."
 
                 self.root.after(0, lambda: self.show_diff_window(diff_text))
-                self.stop_loading("NETCONF XML preview loaded in Diff Viewer.", 1)
+                self.stop_loading("NETCONF diff generated.", 1)
                 return
 
             current_config = self.get_normalized_running_config(router)
@@ -1037,7 +1030,7 @@ class ModernConfigPushGUI:
             message += f"Target port: {router['restconf_port']}\n"
 
         if self.backup_before_deploy_var.get():
-            self.backup_running_config(router, config["type"])
+            message += "\nBackup before deploy: enabled\n"
         else:
             message += "\nBackup before deploy: disabled\n"
 
@@ -1060,7 +1053,7 @@ class ModernConfigPushGUI:
             self.log(f"Target router: {router['host']}")
 
             if self.backup_before_deploy_var.get():
-                self.backup_running_config(router)
+                self.backup_running_config(router, config["type"])
 
             config_content = self.download_selected_config(config)
 
@@ -1101,48 +1094,58 @@ class ModernConfigPushGUI:
             timeout=30
         ) as m:
             caps = list(m.server_capabilities)
+            candidate_supported = any("candidate" in cap for cap in caps)
 
-            if not any("candidate" in cap for cap in caps):
-                raise RuntimeError("Candidate datastore is not supported on this device.")
+            if candidate_supported:
+                self.log("Candidate datastore supported. Using candidate + commit.")
+                self.log("Locking candidate datastore...")
+                self.set_status("Locking candidate datastore...", 0.45)
+                m.lock(target="candidate")
 
-            self.log("Locking candidate datastore...")
-            self.set_status("Locking candidate datastore...", 0.45)
-            m.lock(target="candidate")
+                try:
+                    self.log("Loading config into candidate...")
+                    self.set_status("Loading config into candidate...", 0.60)
+                    m.edit_config(
+                        target="candidate",
+                        config=config_xml,
+                        error_option="stop-on-error"
+                    )
 
-            try:
-                self.log("Loading config into candidate...")
-                self.set_status("Loading config into candidate...", 0.60)
+                    self.log("Validating candidate configuration...")
+                    self.set_status("Validating candidate configuration...", 0.75)
+                    m.validate(source="candidate")
+
+                    self.log("Committing candidate to running...")
+                    self.set_status("Committing candidate to running...", 0.90)
+                    m.commit()
+
+                    self.log("NETCONF deployment successful.")
+
+                except RPCError as err:
+                    self.log(f"NETCONF RPCError: {err}")
+                    self.log("Discarding candidate changes...")
+                    m.discard_changes()
+                    raise
+
+                except Exception as err:
+                    self.log(f"NETCONF deployment error: {err}")
+                    self.log("Discarding candidate changes...")
+                    m.discard_changes()
+                    raise
+
+                finally:
+                    self.log("Unlocking candidate datastore...")
+                    m.unlock(target="candidate")
+
+            else:
+                self.log("Candidate datastore not supported. Using running datastore directly.")
+                self.set_status("Editing running datastore...", 0.70)
                 m.edit_config(
-                    target="candidate",
+                    target="running",
                     config=config_xml,
                     error_option="stop-on-error"
                 )
-
-                self.log("Validating candidate configuration...")
-                self.set_status("Validating candidate configuration...", 0.75)
-                m.validate(source="candidate")
-
-                self.log("Committing candidate to running...")
-                self.set_status("Committing candidate to running...", 0.90)
-                m.commit()
-
                 self.log("NETCONF deployment successful.")
-
-            except RPCError as err:
-                self.log(f"NETCONF RPCError: {err}")
-                self.log("Discarding candidate changes...")
-                m.discard_changes()
-                raise
-
-            except Exception as err:
-                self.log(f"NETCONF deployment error: {err}")
-                self.log("Discarding candidate changes...")
-                m.discard_changes()
-                raise
-
-            finally:
-                self.log("Unlocking candidate datastore...")
-                m.unlock(target="candidate")
 
     def deploy_restconf(self, config_json_text, router):
         self.log("Parsing JSON config...")
@@ -1558,7 +1561,6 @@ class ModernConfigPushGUI:
 
                     found_ip = ""
 
-                    # 1. Check libvirt DHCP leases
                     leases = self.ssh_exec(
                         ssh,
                         f"sudo virsh net-dhcp-leases {libvirt_network} || true"
@@ -1573,7 +1575,6 @@ class ModernConfigPushGUI:
                                     found_ip = part.split("/")[0]
                                     break
 
-                    # 2. Check ARP cache
                     if not found_ip:
                         arp_output = self.ssh_exec(
                             ssh,
@@ -1587,7 +1588,6 @@ class ModernConfigPushGUI:
                                 found_ip = parts[0]
                                 break
 
-                    # 3. Every 10 attempts: ping sweep subnet to populate ARP cache
                     if not found_ip and attempt % 10 == 0:
                         self.log("No ARP entry yet, scanning local subnet...")
 
@@ -1609,15 +1609,12 @@ class ModernConfigPushGUI:
                                 break
 
                     if found_ip:
-                        self.update_last_log_line(
-                            f"Management IP found for Gi1: {found_ip}"
-                        )
+                        self.update_last_log_line(f"Management IP found for Gi1: {found_ip}")
                         self.log(f"DHCP IP found: {found_ip}")
                         break
 
                     time.sleep(2)
-                    
-                    
+
             if found_ip:
                 self.log(f"DHCP IP found: {found_ip}")
                 self.root.after(0, lambda: self.host_entry.delete(0, "end"))
