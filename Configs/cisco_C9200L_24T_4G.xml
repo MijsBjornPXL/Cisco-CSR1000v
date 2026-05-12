@@ -1,20 +1,24 @@
 <config xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
-  <vlan-cfg-data xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-vlan">
-    <vlan>
-      <id>10</id>
-      <name>USERS</name>
-    </vlan>
-    <vlan>
-      <id>20</id>
-      <name>SERVERS</name>
-    </vlan>
-    <vlan>
-      <id>30</id>
-      <name>WIFI</name>
-    </vlan>
-    <vlan>
-      <id>99</id>
-      <name>MGMT</name>
-    </vlan>
-  </vlan-cfg-data>
+  <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native">
+
+    <hostname>SW-NETCONF-DEMO</hostname>
+
+    <interface>
+      <GigabitEthernet>
+        <name>1/0/1</name>
+        <description>NETCONF DEMO - ACCESS VLAN 10</description>
+      </GigabitEthernet>
+
+      <GigabitEthernet>
+        <name>1/0/2</name>
+        <description>NETCONF DEMO - ACCESS VLAN 20</description>
+      </GigabitEthernet>
+
+      <GigabitEthernet>
+        <name>1/0/24</name>
+        <description>NETCONF DEMO - TRUNK TO ROUTER/SWITCH</description>
+      </GigabitEthernet>
+    </interface>
+
+  </native>
 </config>

@@ -66,7 +66,7 @@ class ModernConfigPushGUI:
 
         ctk.CTkLabel(
             header_frame,
-            text="Deploy NETCONF XML and RESTCONF JSON configs directly from GitHub",
+            text="Deploy NETCONF XML, RESTCONF JSON and SSH CLI configs directly from GitHub",
             font=ctk.CTkFont(size=14),
             text_color="gray70"
         ).pack(anchor="w", pady=(6, 0))
@@ -95,7 +95,6 @@ class ModernConfigPushGUI:
         )
         self.profile_dropdown.pack(side="left", padx=(0, 12))
 
-
         ctk.CTkButton(
             profile_row,
             text="📂 Load Profile",
@@ -103,7 +102,7 @@ class ModernConfigPushGUI:
             height=38,
             fg_color="#0891B2",
             hover_color="#0E7490"
-        ).pack(side="left", padx=(0, 12))        
+        ).pack(side="left", padx=(0, 12))
         
         ctk.CTkButton(
             profile_row,
@@ -338,7 +337,7 @@ class ModernConfigPushGUI:
             files = os.listdir(LOCAL_CONFIG_DIR)
 
             for filename in files:
-                if filename.lower().endswith((".xml", ".json")):
+                if filename.lower().endswith((".xml", ".json", ".cli")):
                     path = os.path.join(LOCAL_CONFIG_DIR, filename)
                     self.configs.append({
                         "name": filename,
@@ -540,7 +539,7 @@ class ModernConfigPushGUI:
             downloaded = 0
 
             for item in files:
-                if item["type"] == "file" and item["name"].lower().endswith((".xml", ".json")):
+                if item["type"] == "file" and item["name"].lower().endswith((".xml", ".json", ".cli")):
                     file_resp = requests.get(item["download_url"], timeout=30)
                     file_resp.raise_for_status()
 
@@ -568,6 +567,8 @@ class ModernConfigPushGUI:
             return "NETCONF"
         if filename.lower().endswith(".json"):
             return "RESTCONF"
+        if filename.lower().endswith(".cli"):
+            return "SSH"
         return "UNKNOWN"
 
     def get_selected_config(self):
@@ -861,7 +862,7 @@ class ModernConfigPushGUI:
 
         self.log("Creating running-config backup before deployment...")
 
-        if config_type == "NETCONF":
+        if config_type in ["NETCONF", "SSH"]:
             filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.xml"
             content = self.get_running_config_netconf(router)
         else:
@@ -1063,6 +1064,8 @@ class ModernConfigPushGUI:
                 self.deploy_netconf(config_content, router)
             elif config["type"] == "RESTCONF":
                 self.deploy_restconf(config_content, router)
+            elif config["type"] == "SSH":
+                self.deploy_ssh_cli(config_content, router)
             else:
                 raise ValueError("Unsupported config type.")
 
@@ -1148,6 +1151,69 @@ class ModernConfigPushGUI:
                     error_option="stop-on-error"
                 )
                 self.log("NETCONF deployment successful.")
+
+    def deploy_ssh_cli(self, cli_text, router):
+        self.log(f"Connecting via SSH to {router['host']}:22...")
+        self.set_status("Connecting via SSH...", 0.35)
+
+        commands = [
+            line.strip()
+            for line in cli_text.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+
+        if not commands:
+            raise ValueError("Selected CLI file does not contain any commands.")
+
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        try:
+            ssh.connect(
+                hostname=router["host"],
+                username=router["username"],
+                password=router["password"],
+                timeout=15,
+                look_for_keys=False,
+                allow_agent=False
+            )
+
+            shell = ssh.invoke_shell()
+            time.sleep(1)
+
+            if shell.recv_ready():
+                shell.recv(65535)
+
+            for index, command in enumerate(commands, start=1):
+                self.log(f"SSH sending: {command}")
+                progress = 0.35 + (index / len(commands)) * 0.55
+                self.set_status(f"SSH command {index}/{len(commands)}", progress)
+
+                shell.send(command + "\n")
+                time.sleep(0.6)
+
+                output = ""
+                while shell.recv_ready():
+                    output += shell.recv(65535).decode(errors="ignore")
+
+                if "% Invalid input" in output or "% Ambiguous command" in output or "% Incomplete command" in output:
+                    self.log(output[-1500:])
+                    raise RuntimeError(f"SSH CLI command failed: {command}")
+
+            time.sleep(1)
+
+            output = ""
+            while shell.recv_ready():
+                output += shell.recv(65535).decode(errors="ignore")
+
+            if output.strip():
+                self.log("SSH output:")
+                self.log(output[-1500:])
+
+            self.log("SSH CLI deployment successful.")
+
+        finally:
+            ssh.close()
 
     def deploy_restconf(self, config_json_text, router):
         self.log("Parsing JSON config...")

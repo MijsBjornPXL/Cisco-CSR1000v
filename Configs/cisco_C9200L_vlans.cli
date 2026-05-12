@@ -1,0 +1,19 @@
+configure terminal
+vlan 10
+ name USERS
+vlan 20
+ name SERVERS
+vlan 30
+ name WIFI
+vlan 99
+ name MGMT
+interface GigabitEthernet1/0/1
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+interface GigabitEthernet1/0/2
+ switchport mode access
+ switchport access vlan 20
+ no shutdown
+end
+write memory

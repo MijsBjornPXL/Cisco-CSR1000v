@@ -3,6 +3,8 @@ PREP switch NETCONF/RESTCONF:
 enable
 configure terminal
 
+hostname SW-NETCONF-DEMO
+
 vlan 99
  name MGMT
 
@@ -10,30 +12,64 @@ interface vlan 99
  ip address 10.10.10.10 255.255.255.0
  no shutdown
 
-ip default-gateway 10.0.0.1
+ip default-gateway 10.10.10.1
 
 interface GigabitEthernet1/0/1
+ description MGMT ACCESS PORT
  switchport mode access
  switchport access vlan 99
  no shutdown
 
-netconf-yang
-restconf
+username bjorn privilege 15 secret 01031100
+
+ip domain-name lab.local
+ip ssh version 2
+
+line vty 0 15
+ login local
+ transport input ssh
 
 ip http secure-server
 ip http authentication local
 
-username bjorn privilege 15 secret 01031100
+netconf-yang
 netconf-yang feature candidate-datastore
+restconf
+
 end
 write memory
 
 
 ------------------------------------
 
+PREP router NETCONF/RESTCONF:
+
+enable
+configure terminal
+
+hostname RTR-NETCONF-DEMO
+
 interface GigabitEthernet0/0/0
- description MGMT
+ description MGMT INTERFACE
  ip address 10.10.10.1 255.255.255.0
  no shutdown
- 
- 
+
+username bjorn privilege 15 secret 01031100
+
+ip domain-name lab.local
+ip ssh version 2
+
+line vty 0 15
+ login local
+ transport input ssh
+
+ip http secure-server
+ip http authentication local
+
+netconf-yang
+netconf-yang feature candidate-datastore
+restconf
+
+end
+write memory
+
