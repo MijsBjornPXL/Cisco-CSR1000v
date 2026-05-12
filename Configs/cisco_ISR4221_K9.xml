@@ -3,7 +3,7 @@
     <hostname>CSR-NETCONF-AUTO</hostname>
     <interface>
       <GigabitEthernet>
-        <name>0/0/0</name>
+        <name>0/0/1</name>
         <description>Configured from GitHub via NETCONF</description>
         <ip>
           <address>
