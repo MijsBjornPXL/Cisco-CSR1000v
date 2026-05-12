@@ -822,25 +822,54 @@ class ModernConfigPushGUI:
         finally:
             self.set_buttons_state("normal")
 
-    def get_running_config_restconf(self, router):
-        url = f"{router['restconf_base_url']}/restconf/data/Cisco-IOS-XE-native:native"
 
-        response = requests.get(
-            url,
-            auth=(router["username"], router["password"]),
-            headers={"Accept": "application/yang-data+json"},
-            verify=False,
-            timeout=30
-        )
+        def backup_running_config(self, router, config_type="RESTCONF"):
+            os.makedirs(BACKUP_DIR, exist_ok=True)
+        
+            timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+        
+            if config_type == "NETCONF":
+                filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.xml"
+            else:
+                filename = f"backup_{router['host'].replace('.', '_')}_{timestamp}.json"
+        
+            path = os.path.join(BACKUP_DIR, filename)
+        
+            self.log("Creating running-config backup before deployment...")
+        
+            if config_type == "NETCONF":
+                content = self.get_running_config_netconf(router)
+            else:
+                content = self.get_running_config_restconf(router)
+        
+            with open(path, "w", encoding="utf-8") as file:
+                file.write(content)
+        
+            self.log(f"Backup saved: {path}")
+            return path
+            
+        def get_running_config_netconf(self, router):
+            filter_xml = """
+            <filter xmlns="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <native xmlns="http://cisco.com/ns/yang/Cisco-IOS-XE-native"/>
+            </filter>
+            """
+        
+            with manager.connect(
+                host=router["host"],
+                port=router["netconf_port"],
+                username=router["username"],
+                password=router["password"],
+                hostkey_verify=False,
+                device_params={"name": "csr"},
+                look_for_keys=False,
+                allow_agent=False,
+                timeout=30
+            ) as m:
+                result = m.get_config(source="running", filter=filter_xml)
+                return result.xml
 
-        self.check_response(response, "Retrieve running config")
-
-        try:
-            return json.dumps(response.json(), indent=4)
-        except Exception:
-            return response.text
-
-    def backup_running_config(self, router):
+    def backup_running_config(self, router, config_type="RESTCONF"):
         os.makedirs(BACKUP_DIR, exist_ok=True)
 
         timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -1008,7 +1037,7 @@ class ModernConfigPushGUI:
             message += f"Target port: {router['restconf_port']}\n"
 
         if self.backup_before_deploy_var.get():
-            message += "\nBackup before deploy: enabled\n"
+            self.backup_running_config(router, config["type"])
         else:
             message += "\nBackup before deploy: disabled\n"
 

@@ -1,0 +1,581 @@
+{
+    "Cisco-IOS-XE-native:native": {
+        "version": "17.3",
+        "boot-start-marker": [
+            null
+        ],
+        "boot-end-marker": [
+            null
+        ],
+        "memory": {
+            "free": {
+                "low-watermark": {
+                    "processor": 69226
+                }
+            }
+        },
+        "call-home": {
+            "Cisco-IOS-XE-call-home:contact-email-addr": "sch-smart-licensing@cisco.com",
+            "Cisco-IOS-XE-call-home:tac-profile": {
+                "profile": {
+                    "CiscoTAC-1": {
+                        "active": true,
+                        "destination": {
+                            "transport-method": "http"
+                        }
+                    }
+                }
+            }
+        },
+        "service": {
+            "timestamps": {
+                "debug": {
+                    "datetime": {
+                        "msec": {}
+                    }
+                },
+                "log": {
+                    "datetime": {
+                        "msec": [
+                            null
+                        ]
+                    }
+                }
+            },
+            "call-home": [
+                null
+            ]
+        },
+        "platform": {
+            "Cisco-IOS-XE-platform:qfp": {
+                "utilization": {
+                    "monitor": {
+                        "load": 80
+                    }
+                }
+            },
+            "Cisco-IOS-XE-platform:punt-keepalive": {
+                "disable-kernel-core": true
+            }
+        },
+        "hostname": "CSR-BJORN",
+        "enable": {
+            "secret": {
+                "type": "9",
+                "secret": "$9$P5fmm/2rDu55f.$j311j5KUHT216wU414VNjv.LBWOHx1JxtBqLuRCLr.U"
+            }
+        },
+        "username": [
+            {
+                "name": "bjorn",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$U1.wW9KeEM3wkk$5klAwj0gpYA.6AzYoYI8i.uZT08TeIU/ve3i7cAYTvk"
+                }
+            },
+            {
+                "name": "guardian",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$to.8jgEg7txVL.$8t2xYHc2j9vhVuP6dW9u6WwSYVhJoL/snUNYCzwBqUs"
+                }
+            },
+            {
+                "name": "lector",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$kXQEndg6wqi0Lk$p21gc9KOu6B.VSbsBx5NXZHMh2Y/OZ8Ce3OKCr89B36"
+                }
+            }
+        ],
+        "ip": {
+            "domain": {
+                "lookup": false
+            },
+            "forward-protocol": {
+                "protocol": "nd"
+            },
+            "Cisco-IOS-XE-http:http": {
+                "server": false,
+                "secure-server": true
+            }
+        },
+        "interface": {
+            "GigabitEthernet": [
+                {
+                    "name": "0/0/0",
+                    "ip": {
+                        "address": {
+                            "primary": {
+                                "address": "10.0.0.1",
+                                "mask": "255.255.255.0"
+                            }
+                        }
+                    },
+                    "Cisco-IOS-XE-ethernet:negotiation": {
+                        "auto": true
+                    }
+                },
+                {
+                    "name": "0/0/1",
+                    "description": "CONFIGURED VIA NETCONF",
+                    "Cisco-IOS-XE-ethernet:negotiation": {
+                        "auto": true
+                    }
+                }
+            ],
+            "Loopback": [
+                {
+                    "name": 0,
+                    "description": "LOOPBACK NETCONF",
+                    "ip": {
+                        "address": {
+                            "primary": {
+                                "address": "10.10.10.10",
+                                "mask": "255.255.255.255"
+                            }
+                        }
+                    }
+                }
+            ],
+            "Serial": [
+                {
+                    "name": "0/1/0",
+                    "shutdown": [
+                        null
+                    ]
+                },
+                {
+                    "name": "0/1/1",
+                    "shutdown": [
+                        null
+                    ]
+                }
+            ]
+        },
+        "control-plane": {},
+        "login": {
+            "on-success": {
+                "log": {}
+            }
+        },
+        "multilink": {
+            "Cisco-IOS-XE-ppp:bundle-name": "authenticated"
+        },
+        "redundancy": {
+            "mode": "none"
+        },
+        "spanning-tree": {
+            "Cisco-IOS-XE-spanning-tree:extend": {
+                "system-id": [
+                    null
+                ]
+            }
+        },
+        "subscriber": {
+            "templating": [
+                null
+            ]
+        },
+        "crypto": {
+            "Cisco-IOS-XE-crypto:pki": {
+                "certificate": {
+                    "chain": [
+                        {
+                            "name": "SLA-TrustPoint",
+                            "certificate": [
+                                {
+                                    "serial": "01",
+                                    "certtype": "ca"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "TP-self-signed-3990602815",
+                            "certificate": [
+                                {
+                                    "serial": "01",
+                                    "certtype": "self-signed"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "trustpoint": [
+                    {
+                        "id": "SLA-TrustPoint",
+                        "enrollment": {
+                            "pkcs12": [
+                                null
+                            ]
+                        },
+                        "revocation-check": [
+                            "crl"
+                        ]
+                    },
+                    {
+                        "id": "TP-self-signed-3990602815",
+                        "enrollment": {
+                            "selfsigned": [
+                                null
+                            ]
+                        },
+                        "revocation-check": [
+                            "none"
+                        ],
+                        "subject-name": "cn=IOS-Self-Signed-Certificate-3990602815"
+                    }
+                ]
+            }
+        },
+        "license": {
+            "udi": {
+                "pid": "ISR4221/K9",
+                "sn": "FGL2644LH3C"
+            },
+            "boot": {
+                "level": {
+                    "securityk9": [
+                        null
+                    ]
+                }
+            }
+        },
+        "line": {
+            "aux": [
+                {
+                    "first": "0",
+                    "stopbits": "1"
+                }
+            ],
+            "console": [
+                {
+                    "first": "0",
+                    "login": {},
+                    "password": {
+                        "secret": "console"
+                    },
+                    "stopbits": "1",
+                    "transport": {
+                        "input": {
+                            "none": [
+                                null
+                            ]
+                        }
+                    }
+                }
+            ],
+            "vty": [
+                {
+                    "first": 0,
+                    "last": 4,
+                    "login": {
+                        "local": [
+                            null
+                        ]
+                    },
+                    "transport": {
+                        "input": {
+                            "input": [
+                                "ssh"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "event": {
+            "Cisco-IOS-XE-eem:manager": {
+                "session": {
+                    "cli": {
+                        "username": {
+                            "username_in_word": [
+                                {
+                                    "username_in_word": "guardian",
+                                    "privilege": 15
+                                }
+                            ]
+                        }
+                    }
+                },
+                "applet": [
+                    {
+                        "name": "eem-labnet-prevention-script1",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script10",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script2",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script3",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script4",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog": {
+                                    "msg": "Attempted to delete the nvram:default-config file - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script5",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script6",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script7",
+                        "event": {
+                            "syslog": {
+                                "pattern": "%SYS-5-RESTART: System restarted"
+                            }
+                        },
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog": {
+                                    "msg": "Procedure to prevent console lockout"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "3.0",
+                                "cli": {
+                                    "command": "show file information nvram:startup-config"
+                                }
+                            },
+                            {
+                                "name": "4.0",
+                                "regexp": {
+                                    "string-pattern": "%Error reading nvram:startup-config",
+                                    "string-input": "$startup_config_output"
+                                }
+                            },
+                            {
+                                "name": "4.1",
+                                "if": {
+                                    "string-op-1": "$_regexp_result",
+                                    "keyword": "eq",
+                                    "string-op-2": ""
+                                }
+                            },
+                            {
+                                "name": "5.0",
+                                "syslog": {
+                                    "msg": "Startup-config found, console and enable defaults set"
+                                }
+                            },
+                            {
+                                "name": "5.1",
+                                "cli": {
+                                    "command": "config t"
+                                }
+                            },
+                            {
+                                "name": "5.2",
+                                "cli": {
+                                    "command": "no security passwords min-length"
+                                }
+                            },
+                            {
+                                "name": "5.3",
+                                "cli": {
+                                    "command": "enable secret secret"
+                                }
+                            },
+                            {
+                                "name": "5.4",
+                                "cli": {
+                                    "command": "line console 0"
+                                }
+                            },
+                            {
+                                "name": "5.5",
+                                "cli": {
+                                    "command": "password console"
+                                }
+                            },
+                            {
+                                "name": "5.6",
+                                "cli": {
+                                    "command": "login"
+                                }
+                            },
+                            {
+                                "name": "5.7",
+                                "cli": {
+                                    "command": "end"
+                                }
+                            },
+                            {
+                                "name": "5.8",
+                                "cli": {
+                                    "command": "wr"
+                                }
+                            },
+                            {
+                                "name": "6.1",
+                                "syslog": {
+                                    "msg": "No startup-config found, restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "6.3",
+                                "cli": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "7.0",
+                                "end": [
+                                    null
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script8",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog": {
+                                    "msg": "Procedure to restore default Lab-config!."
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script9",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "Cisco-IOS-XE-diagnostics:diagnostic": {
+            "bootup": {
+                "level": "minimal"
+            }
+        }
+    }
+}
