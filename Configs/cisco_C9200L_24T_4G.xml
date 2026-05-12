@@ -4,25 +4,39 @@
     <hostname>SW-NETCONF-DEMO</hostname>
 
     <vlan>
-      <configuration>
-        <vlan-id>10</vlan-id>
-        <name>USERS</name>
-      </configuration>
-      <configuration>
-        <vlan-id>20</vlan-id>
-        <name>SERVERS</name>
-      </configuration>
-      <configuration>
-        <vlan-id>30</vlan-id>
-        <name>WIFI</name>
-      </configuration>
-      <configuration>
-        <vlan-id>99</vlan-id>
-        <name>MGMT</name>
-      </configuration>
+      <id>10</id>
+      <name>USERS</name>
+    </vlan>
+
+    <vlan>
+      <id>20</id>
+      <name>SERVERS</name>
+    </vlan>
+
+    <vlan>
+      <id>30</id>
+      <name>WIFI</name>
+    </vlan>
+
+    <vlan>
+      <id>99</id>
+      <name>MGMT</name>
     </vlan>
 
     <interface>
+      <Vlan>
+        <name>99</name>
+        <description>Management VLAN configured via NETCONF</description>
+        <ip>
+          <address>
+            <primary>
+              <address>10.10.10.10</address>
+              <mask>255.255.255.0</mask>
+            </primary>
+          </address>
+        </ip>
+      </Vlan>
+
       <GigabitEthernet>
         <name>1/0/1</name>
         <description>ACCESS PORT VLAN 10 - NETCONF DEMO</description>
@@ -70,6 +84,10 @@
         </switchport>
       </GigabitEthernet>
     </interface>
+
+    <ip>
+      <default-gateway>10.10.10.1</default-gateway>
+    </ip>
 
   </native>
 </config>
