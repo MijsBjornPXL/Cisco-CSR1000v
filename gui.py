@@ -25,7 +25,7 @@ class ModernConfigPushGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Cisco Config Deployer - M1jsXploit")
-        self.root.geometry("1260x952")
+        self.root.geometry("1280x890")
         self.root.minsize(1000, 760)
 
         self.configs = []
@@ -168,7 +168,7 @@ class ModernConfigPushGUI:
         select_frame.pack(fill="x", padx=22, pady=(0, 8))
 
         select_row = ctk.CTkFrame(select_frame, fg_color="transparent")
-        select_row.pack(fill="x", padx=18, pady=12)
+        select_row.pack(fill="x", padx=18, pady=(12, 6))
 
         ctk.CTkLabel(
             select_row,
@@ -185,13 +185,34 @@ class ModernConfigPushGUI:
         )
         self.config_dropdown.pack(side="left", padx=(0, 10))
 
-        self.refresh_button = ctk.CTkButton(select_row, text="🔄 Refresh", command=self.load_configs_threaded, height=34)
+        self.refresh_button = ctk.CTkButton(
+            select_row,
+            text="🔄 Refresh",
+            command=self.load_configs_threaded,
+            height=34,
+            fg_color="#2563EB",
+            hover_color="#1D4ED8"
+        )
         self.refresh_button.pack(side="left", padx=(0, 8))
 
-        self.preview_button = ctk.CTkButton(select_row, text="👁 Preview", command=self.preview_config_threaded, height=34)
+        self.preview_button = ctk.CTkButton(
+            select_row,
+            text="👁 Preview",
+            command=self.preview_config_threaded,
+            height=34,
+            fg_color="#0891B2",
+            hover_color="#0E7490"
+        )
         self.preview_button.pack(side="left", padx=(0, 8))
 
-        self.diff_button = ctk.CTkButton(select_row, text="🔍 Diff", command=self.diff_viewer_threaded, height=34)
+        self.diff_button = ctk.CTkButton(
+            select_row,
+            text="🔍 Diff",
+            command=self.diff_viewer_threaded,
+            height=34,
+            fg_color="#475569",
+            hover_color="#334155"
+        )
         self.diff_button.pack(side="left", padx=(0, 8))
 
         self.push_button = ctk.CTkButton(
@@ -204,26 +225,43 @@ class ModernConfigPushGUI:
         )
         self.push_button.pack(side="left")
 
-        actions_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
-        actions_frame.pack(fill="x", padx=22, pady=(0, 8))
+        actions_row = ctk.CTkFrame(select_frame, fg_color="transparent")
+        actions_row.pack(fill="x", padx=18, pady=(6, 12))
 
         self.backup_before_deploy_var = tk.BooleanVar(value=True)
         self.backup_checkbox = ctk.CTkCheckBox(
-            actions_frame,
+            actions_row,
             text="Backup running-config before deploy",
             variable=self.backup_before_deploy_var
         )
-        self.backup_checkbox.pack(side="left", padx=(0, 14))
+        self.backup_checkbox.pack(side="left")
 
-        self.export_log_button = ctk.CTkButton(actions_frame, text="📄 Export Log", command=self.export_log, height=34)
+        right_actions_frame = ctk.CTkFrame(actions_row, fg_color="transparent")
+        right_actions_frame.pack(side="right")
+
+        self.export_log_button = ctk.CTkButton(
+            right_actions_frame,
+            text="📄 Export Log",
+            command=self.export_log,
+            height=34,
+            fg_color="#475569",
+            hover_color="#334155"
+        )
         self.export_log_button.pack(side="left", padx=(0, 8))
 
-        self.clear_button = ctk.CTkButton(actions_frame, text="🗑 Clear Log", command=self.clear_log, height=34)
+        self.clear_button = ctk.CTkButton(
+            right_actions_frame,
+            text="🗑 Clear Log",
+            command=self.clear_log,
+            height=34,
+            fg_color="#64748B",
+            hover_color="#475569"
+        )
         self.clear_button.pack(side="left", padx=(0, 8))
 
         self.deploy_vm_button = ctk.CTkButton(
-            actions_frame,
-            text="🖥 Deploy Router VM",
+            right_actions_frame,
+            text="🖥 Deploy CSR",
             command=self.open_vm_deployer_window,
             height=34,
             fg_color="#9333EA",
@@ -709,7 +747,7 @@ class ModernConfigPushGUI:
 
     def open_vm_deployer_window(self):
         window = ctk.CTkToplevel(self.root)
-        window.title("Deploy Router VM")
+        window.title("Deploy CSR1000v VM")
         window.geometry("700x650")
         window.minsize(650, 540)
 
@@ -724,7 +762,7 @@ class ModernConfigPushGUI:
 
         ctk.CTkLabel(
             frame,
-            text="Deploy Cisco Router VM",
+            text="Deploy Cisco CSR1000v VM",
             font=ctk.CTkFont(size=20, weight="bold")
         ).pack(anchor="w", padx=15, pady=(15, 10))
 
@@ -811,7 +849,7 @@ class ModernConfigPushGUI:
     def deploy_router_vm_from_window(self, window):
         try:
             self.set_buttons_state("disabled")
-            self.start_loading("Deploying router VM...")
+            self.start_loading("Deploying CSR1000v VM...")
 
             result = deploy_router_vm(
                 kvm_host=self.kvm_host_entry.get().strip(),
@@ -841,7 +879,7 @@ class ModernConfigPushGUI:
                     f"VM {result['vm_name']} deployed successfully.\n\nNo DHCP lease found yet."
                 )
 
-            self.stop_loading("Router VM deployed.", 1)
+            self.stop_loading("CSR1000v VM deployed.", 1)
             self.root.after(0, window.destroy)
 
         except Exception as error:

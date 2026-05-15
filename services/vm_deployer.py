@@ -338,7 +338,7 @@ def deploy_router_vm(
                 f"{management_mac}..."
             )
 
-            max_attempts = 60
+            max_attempts = 80
 
             for attempt in range(max_attempts):
 

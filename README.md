@@ -1,14 +1,25 @@
 # Cisco Config Deployer
 
-Repository containing configuration files, automation examples, and a modern deployment GUI for Cisco network devices supporting **NETCONF** and **RESTCONF**.
+Modern Python GUI for deploying Cisco IOS-XE configurations using **NETCONF**, **RESTCONF** and **SSH CLI**, with support for local/GitHub config files and automated CSR1000v KVM deployment.
+
+---
 
 ## 📘 Overview
 
-This repository is used to store and manage reusable Cisco configurations for labs, testing environments, and network automation assignments.
+Cisco Config Deployer is a lab-focused network automation tool for deploying reusable Cisco configurations to routers and switches.
 
-The goal is to keep configurations centralized, version-controlled, and easy to deploy through automation tools or the included GUI.
+The project is designed for Cisco IOS-XE environments and supports:
 
-Supported devices typically include Cisco IOS-XE platforms such as routers, switches, virtual appliances, and other devices with NETCONF and/or RESTCONF enabled.
+- NETCONF XML configuration files
+- RESTCONF JSON configuration files
+- SSH CLI `.cli` command files
+- Local config caching
+- GitHub-based config synchronization
+- Deployment logging
+- Running-config backups
+- CSR1000v VM deployment through KVM/libvirt
+
+The goal is to keep network configurations centralized, version-controlled and easy to deploy through a modern GUI.
 
 ---
 
@@ -17,156 +28,346 @@ Supported devices typically include Cisco IOS-XE platforms such as routers, swit
 ```text
 Cisco-Config-Deployer/
 │
-├── Configs/                       # XML / JSON configuration files
-├── Scripts/
-│   └── Cisco_Config_Deployer.py  # GUI deployment tool
-└── README.md                     # Project documentation
+├── main.py
+├── gui.py
+├── constants.py
+│
+├── services/
+│   ├── netconf_service.py
+│   ├── restconf_service.py
+│   ├── ssh_service.py
+│   ├── github_service.py
+│   ├── backup_service.py
+│   └── vm_deployer.py
+│
+├── utils/
+│   ├── profiles.py
+│   ├── network.py
+│   └── config_loader.py
+│
+├── Configs/
+│   ├── *.xml
+│   ├── *.json
+│   └── *.cli
+│
+├── backups/
+├── csr1000v_profiles.json
+└── README.md
 ```
 
 ---
 
-## ⚙️ Included Configurations
+## ⚙️ Supported Config Types
+
+| File Type | Protocol | Use |
+|---|---|---|
+| `.xml` | NETCONF | IOS-XE YANG XML configuration |
+| `.json` | RESTCONF | IOS-XE RESTCONF JSON payloads |
+| `.cli` | SSH | Traditional Cisco CLI commands |
+
+---
+
+## 🧩 Included Configuration Examples
 
 Examples may include:
 
 - Hostname configuration
+- Interface descriptions
 - Interface IP addressing
-- VLAN interfaces
+- VLAN creation
+- Switchport access VLAN configuration
+- Trunk port configuration
 - OSPF routing
 - Static routes
 - RESTCONF compatible configs
 - NETCONF compatible configs
+- SSH CLI switch configuration files
 - Full IOS-XE lab deployments
 
 ---
 
 ## ✅ Prerequisites
 
-Before using this tool, ensure the following requirements are met:
-
 ### Device Requirements
 
-- Cisco device with **NETCONF** and/or **RESTCONF** support
-- Reachable IP address or hostname
-- Correct management ports open
+- Cisco IOS-XE device or CSR1000v
+- Reachable management IP address
 - Valid username and password
-- Management interface accessible from your PC
+- NETCONF, RESTCONF or SSH enabled
+- Correct management ports open
+- Management interface reachable from the deployment machine
 
-### Cisco Configuration Example
+---
 
-Enable required APIs on the Cisco device:
+## 🔐 Cisco Configuration Example
+
+Enable NETCONF, RESTCONF and SSH access:
 
 ```cisco
 conf t
 !
+hostname CSR1000v
+!
+username bjorn privilege 15 secret YourPassword
+!
+ip domain-name lab.local
+crypto key generate rsa modulus 2048
+ip ssh version 2
+!
 netconf-yang
 !
 restconf
-!
 ip http secure-server
 ip http authentication local
-!
-username admin privilege 15 secret YourPassword
 !
 end
 wr
 ```
 
-### Common Default Ports
+---
+
+## 🌐 Common Default Ports
 
 | Protocol | Default Port |
-|--------|--------------|
+|---|---|
+| SSH | 22 |
 | NETCONF | 830 |
 | RESTCONF HTTPS | 443 |
 
-> Custom ports can also be used in the GUI.
+Custom ports can be configured in the GUI profiles.
 
-### Python Requirements
+---
 
-Install required modules:
+## 🐍 Python Requirements
+
+Install required Python modules:
 
 ```bash
-pip install customtkinter requests ncclient
+pip install customtkinter requests ncclient paramiko
+```
+
+Optional but useful for KVM/CSR1000v VM deployment:
+
+```bash
+sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients virtinst
 ```
 
 ---
 
-## 🖥 Included Deployment Tool
+## 🖥 Cisco Config Deployer GUI
 
-This repository also includes a modern Python GUI called:
+The GUI allows you to select a configuration file, preview it, compare it with the running configuration and deploy it to the target device.
 
-**Cisco Config Deployer**
+### Main Features
 
-The tool automatically connects to this GitHub repository, detects available config files, and allows direct deployment to supported Cisco devices.
-
-### Features
-
-- Auto-load configs from GitHub
-- Detect NETCONF (`.xml`) configs
-- Detect RESTCONF (`.json`) configs
-- Config preview window
-- Push config directly to device
+- Modern dark-mode GUI
+- Local config loading from `Configs/`
+- GitHub config synchronization
+- NETCONF XML deployment
+- RESTCONF JSON deployment
+- SSH CLI `.cli` deployment
 - Device profiles
-- Save and load profiles
-- Deployment confirmation popup
-- Progress bar and live logging
+- Save/load profiles
+- Password visibility toggle
+- Test connection
+- Device info retrieval
+- Preview configuration
+- Diff viewer
+- Backup running-config before deployment
 - Export deployment logs
-- Modern dark-mode interface
+- Clear deployment logs
+- Live deployment progress
+- Detailed NETCONF/RESTCONF replies in the log
 
 ---
 
-## 🚀 Use Cases
+## 🔁 NETCONF Deployment
 
-This repository can be used for:
+NETCONF deployments support:
 
-- Cisco lab environments
-- Network automation testing
-- RESTCONF deployments
-- NETCONF deployments
-- GitHub as Single Source of Truth
-- Infrastructure as Code practice
-- GUI-based config deployment demos
-- Multi-device testing environments
+- Candidate datastore detection
+- Candidate lock/unlock
+- `edit-config`
+- validation
+- commit
+- fallback/error logging
+- full NETCONF RPC replies in the deployment log
+
+Example log output:
+
+```text
+Candidate datastore supported. Using candidate + commit.
+Locking candidate datastore...
+NETCONF lock reply: <ok/>
+Loading config into candidate...
+NETCONF edit-config reply: <ok/>
+Validating candidate configuration...
+NETCONF validate reply: <ok/>
+Committing candidate to running...
+NETCONF commit reply: <ok/>
+Unlocking candidate datastore...
+NETCONF deployment successful.
+```
 
 ---
 
-## 🔄 Example Workflow
+## 🌍 RESTCONF Deployment
 
-1. Store desired device configuration in this repository
-2. Open the Cisco Config Deployer GUI
+RESTCONF deployments support:
+
+- JSON payload parsing
+- hostname configuration
+- interface configuration
+- optional IP configuration
+- optional OSPF configuration
+- full RESTCONF URL logging
+- HTTP status code logging
+- response body logging
+
+RESTCONF deployments can work with both L3 interface configs and switch-style interface descriptions without IP addressing.
+
+Example log output:
+
+```text
+RESTCONF planned change:
+Method: PATCH
+URL: https://10.10.10.10:443/restconf/data/Cisco-IOS-XE-native:native
+Payload:
+{
+    "Cisco-IOS-XE-native:native": {
+        "hostname": "SW-RESTCONF-DEMO"
+    }
+}
+
+Configure hostname status: 204
+Response body: <empty>
+```
+
+---
+
+## 💻 SSH CLI Deployment
+
+`.cli` files are deployed through SSH using Paramiko.
+
+This is useful for traditional Cisco switch configuration tasks such as:
+
+- VLAN creation
+- Access port configuration
+- Trunk port configuration
+- Interface descriptions
+- Basic CLI-based lab tasks
+
+Example `.cli` file:
+
+```cisco
+conf t
+!
+vlan 10
+ name USERS
+!
+vlan 20
+ name SERVERS
+!
+interface GigabitEthernet1/0/1
+ description ACCESS VLAN 10
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+!
+end
+wr
+```
+
+---
+
+## 🖥 CSR1000v VM Deployment
+
+The tool also includes automated CSR1000v deployment through KVM/libvirt.
+
+The VM deployer can:
+
+- Connect to a KVM host over SSH
+- Read XML from a base CSR1000v VM
+- Clone the QCOW2 disk
+- Generate a new VM XML
+- Generate new MAC addresses
+- Force compatible KVM/libvirt settings
+- Define the new VM
+- Start the new VM
+- Detect the DHCP IP address
+- Insert the discovered IP into the GUI target field
+
+Example deployment flow:
+
+```text
+Connecting to KVM host...
+Reading XML from base VM...
+Cloning disk...
+Generating new VM XML...
+Uploading generated XML...
+Defining VM...
+Starting VM...
+Waiting for DHCP lease...
+DHCP IP found.
+VM deployed successfully.
+```
+
+---
+
+## 🧪 Example Workflow
+
+1. Add `.xml`, `.json` or `.cli` files to the `Configs/` folder
+2. Start the GUI
 3. Load or create a device profile
-4. Select a config from GitHub
-5. Preview configuration
-6. Push config via RESTCONF or NETCONF
-7. Validate changes
-8. Export logs if needed
+4. Select the config file
+5. Preview the config
+6. Optionally open the diff viewer
+7. Enable or disable running-config backup
+8. Push the config
+9. Review NETCONF/RESTCONF/SSH output in the deployment log
+10. Export the log if needed
 
 ---
 
-## 🧰 Technologies
+## 🔄 GitHub Sync
 
+The GUI can refresh configs from GitHub and store them locally in the `Configs/` folder.
+
+GitHub is only contacted when using the **Refresh** button.
+
+Local configs are loaded automatically when the GUI starts.
+
+---
+
+## 🧰 Technologies Used
+
+- Python
+- CustomTkinter
+- Paramiko
+- Requests
+- ncclient
 - Cisco IOS-XE
 - NETCONF
 - RESTCONF
-- YANG Models
-- Python
-- CustomTkinter
+- SSH
+- YANG models
 - GitHub
-- Requests
-- ncclient
+- KVM/libvirt
+- CSR1000v
 
 ---
 
 ## 📌 Notes
 
-- Configurations are intended for educational and lab purposes
-- Always verify IP addresses, credentials, and ports before deployment
-- Test changes in a non-production environment first
-- Saved profiles may store passwords in plain text for lab convenience
-- Do not use plain text credential storage in production environments
-- Some configuration paths may vary between Cisco platforms and software versions
+- This project is intended for lab and educational environments.
+- Always verify IP addresses, credentials and ports before deployment.
+- Test configurations in a non-production environment first.
+- Saved profiles may store passwords in plain text for lab convenience.
+- Do not use plain text credential storage in production.
+- Some YANG paths differ between Cisco IOS-XE versions and platforms.
+- RESTCONF `204 No Content` responses are normal for successful changes.
+- CSR1000v often uses serial console instead of graphical VNC output.
 - Config files are cached locally in the `Configs/` folder.
-- GitHub is only contacted when using the `Refresh Configs` button.
 
 ---
 
@@ -179,4 +380,4 @@ GitHub: [MijsBjornPXL](https://github.com/MijsBjornPXL)
 
 ## ⭐ Version Control
 
-All changes are tracked through GitHub commits for easy rollback, versioning, and collaboration.
+All changes are tracked through GitHub commits for rollback, versioning and collaboration.
