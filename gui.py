@@ -7,7 +7,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 
 import customtkinter as ctk
-import requests
 
 from constants import LOCAL_CONFIG_DIR
 from utils.profiles import load_profiles_from_file, save_profiles_to_file
@@ -19,7 +18,7 @@ from services.backup_service import backup_running_config
 from services.netconf_service import deploy_netconf, get_running_config_netconf, test_netconf
 from services.restconf_service import deploy_restconf, get_running_config_restconf, test_restconf
 from services.ssh_service import deploy_ssh_cli
-from services.vm_service import deploy_router_vm
+from services.vm_deployer import deploy_router_vm
 
 
 class ModernConfigPushGUI:
@@ -272,16 +271,6 @@ class ModernConfigPushGUI:
         self.log_box.see("end")
         self.root.update_idletasks()
 
-    def update_last_log_line(self, message):
-        timestamp = time.strftime("%H:%M:%S")
-        try:
-            self.log_box.delete("end-2l", "end-1l")
-            self.log_box.insert("end", f"[{timestamp}] {message}\n")
-            self.log_box.see("end")
-            self.root.update_idletasks()
-        except Exception:
-            self.log(message)
-
     def clear_log(self):
         self.log_box.delete("1.0", "end")
 
@@ -323,13 +312,8 @@ class ModernConfigPushGUI:
 
     def toggle_password_visibility(self):
         self.password_visible = not self.password_visible
-
-        if self.password_visible:
-            self.password_entry.configure(show="")
-            self.password_toggle_button.configure(text="🙈")
-        else:
-            self.password_entry.configure(show="*")
-            self.password_toggle_button.configure(text="👁")
+        self.password_entry.configure(show="" if self.password_visible else "*")
+        self.password_toggle_button.configure(text="🙈" if self.password_visible else "👁")
 
     def get_router_settings(self):
         host = self.host_entry.get().strip()
@@ -724,8 +708,146 @@ class ModernConfigPushGUI:
         messagebox.showinfo("Export Log", "Log exported successfully.")
 
     def open_vm_deployer_window(self):
-        messagebox.showinfo(
-            "VM Deployment",
-            "VM deployment service is split into services/vm_service.py.\n"
-            "The GUI window can be re-added here when needed."
+        window = ctk.CTkToplevel(self.root)
+        window.title("Deploy Router VM")
+        window.geometry("700x650")
+        window.minsize(650, 540)
+
+        window.transient(self.root)
+        window.lift()
+        window.focus_force()
+        window.attributes("-topmost", True)
+        window.after(300, lambda: window.attributes("-topmost", False))
+
+        frame = ctk.CTkFrame(window, corner_radius=14)
+        frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(
+            frame,
+            text="Deploy Cisco Router VM",
+            font=ctk.CTkFont(size=20, weight="bold")
+        ).pack(anchor="w", padx=15, pady=(15, 10))
+
+        def add_labeled_entry(parent, label_text, placeholder_text="", show=None, default_value=""):
+            ctk.CTkLabel(
+                parent,
+                text=label_text,
+                font=ctk.CTkFont(size=12),
+                text_color="gray75"
+            ).pack(anchor="w", padx=15, pady=(8, 2))
+
+            entry = ctk.CTkEntry(parent, placeholder_text=placeholder_text, show=show)
+            entry.pack(fill="x", padx=15, pady=(0, 4))
+
+            if default_value:
+                entry.insert(0, default_value)
+
+            return entry
+
+        self.kvm_host_entry = add_labeled_entry(
+            frame,
+            "KVM Host / IP",
+            "Enter KVM hostname or IP",
+            default_value="10.125.100.234"
         )
+
+        self.kvm_user_entry = add_labeled_entry(
+            frame,
+            "SSH Username",
+            "Enter SSH username",
+            default_value="lab-dc-h-vm07"
+        )
+
+        self.kvm_password_entry = add_labeled_entry(
+            frame,
+            "SSH Password",
+            "Enter SSH password",
+            show="*"
+        )
+
+        self.base_vm_entry = add_labeled_entry(
+            frame,
+            "Base VM Name",
+            "Enter base VM name",
+            default_value="CSR1000"
+        )
+
+        self.new_vm_entry = add_labeled_entry(
+            frame,
+            "New VM Name",
+            "Enter new VM name",
+            default_value="CSR-AUTO-01"
+        )
+
+        self.source_qcow_entry = add_labeled_entry(
+            frame,
+            "Source QCOW2 Path",
+            "Enter source QCOW2 path",
+            default_value="/var/lib/libvirt/images/CSR1000v/virtioa_deploy.qcow2"
+        )
+
+        self.libvirt_network_entry = add_labeled_entry(
+            frame,
+            "Libvirt Network",
+            "Enter libvirt network name",
+            default_value="default"
+        )
+
+        ctk.CTkButton(
+            frame,
+            text="🚀 Deploy VM",
+            command=lambda: self.deploy_router_vm_threaded(window),
+            height=40,
+            fg_color="#15803D",
+            hover_color="#166534"
+        ).pack(anchor="w", padx=15, pady=(18, 10))
+
+    def deploy_router_vm_threaded(self, window):
+        threading.Thread(
+            target=lambda: self.deploy_router_vm_from_window(window),
+            daemon=True
+        ).start()
+
+    def deploy_router_vm_from_window(self, window):
+        try:
+            self.set_buttons_state("disabled")
+            self.start_loading("Deploying router VM...")
+
+            result = deploy_router_vm(
+                kvm_host=self.kvm_host_entry.get().strip(),
+                kvm_user=self.kvm_user_entry.get().strip(),
+                kvm_password=self.kvm_password_entry.get(),
+                base_vm=self.base_vm_entry.get().strip(),
+                new_vm=self.new_vm_entry.get().strip(),
+                source_qcow=self.source_qcow_entry.get().strip(),
+                libvirt_network=self.libvirt_network_entry.get().strip(),
+                log=self.log,
+                set_status=self.set_status
+            )
+
+            found_ip = result.get("ip", "")
+
+            if found_ip:
+                self.host_entry.delete(0, "end")
+                self.host_entry.insert(0, found_ip)
+
+                messagebox.showinfo(
+                    "VM Deployed",
+                    f"VM {result['vm_name']} deployed successfully.\n\nIP address: {found_ip}"
+                )
+            else:
+                messagebox.showinfo(
+                    "VM Deployed",
+                    f"VM {result['vm_name']} deployed successfully.\n\nNo DHCP lease found yet."
+                )
+
+            self.stop_loading("Router VM deployed.", 1)
+            self.root.after(0, window.destroy)
+
+        except Exception as error:
+            self.stop_loading("VM deployment failed.", 0)
+            self.log(f"VM deployment failed: {error}")
+            messagebox.showerror("VM Deployment Failed", str(error))
+
+        finally:
+            self.set_buttons_state("normal")
