@@ -1,0 +1,849 @@
+{
+    "Cisco-IOS-XE-native:native": {
+        "version": "17.6",
+        "memory": {
+            "free": {
+                "low-watermark": {
+                    "processor": 10633
+                }
+            }
+        },
+        "call-home": {
+            "Cisco-IOS-XE-call-home:contact-email-addr": "sch-smart-licensing@cisco.com",
+            "Cisco-IOS-XE-call-home:tac-profile": {
+                "profile": {
+                    "CiscoTAC-1": {
+                        "active": true,
+                        "destination": {
+                            "transport-method": "http"
+                        }
+                    }
+                }
+            }
+        },
+        "service": {
+            "timestamps": {
+                "debug-config": {
+                    "datetime": {
+                        "msec": [
+                            null
+                        ]
+                    }
+                },
+                "log-config": {
+                    "datetime": {
+                        "msec": [
+                            null
+                        ]
+                    }
+                }
+            },
+            "call-home": [
+                null
+            ]
+        },
+        "platform": {
+            "Cisco-IOS-XE-platform:punt-keepalive": {
+                "disable-kernel-core": true
+            }
+        },
+        "hostname": "SW-RESTCONF-DEMO",
+        "enable": {
+            "secret": {
+                "type": "9",
+                "secret": "$9$GRgxwYD.d1BgJE$umVGypGWatpnWnrILfUfIeQxZsomCaX0QrMhWGW7bn6"
+            }
+        },
+        "username": [
+            {
+                "name": "bjorn",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$KI90Q.tMwTUB8U$ABkFhm6Ep84ECLrz/Lhv7.47Fa8DTOSOaciMa39dngo"
+                }
+            },
+            {
+                "name": "guardian",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$vMJuD9efzNXbQk$93r0FT92sqsHBnJrMsRx2j3XRQI5fylDn1oOTg07qSo"
+                }
+            },
+            {
+                "name": "lector",
+                "privilege": 15,
+                "secret": {
+                    "encryption": "9",
+                    "secret": "$9$56vxkInVTox3FE$dBQRYm9yhG7tqKuwhrOHlDXE1.RkBE5Xai6rVSSu6tI"
+                }
+            }
+        ],
+        "vrf": {
+            "definition": [
+                {
+                    "name": "Mgmt-vrf",
+                    "address-family": {
+                        "ipv4": {},
+                        "ipv6": {}
+                    }
+                }
+            ]
+        },
+        "ip": {
+            "domain": {
+                "lookup": false
+            },
+            "default-gateway": "10.10.10.1",
+            "forward-protocol": {
+                "protocol": "nd"
+            },
+            "ssh": {
+                "source-interface-config": {
+                    "Vlan": 99
+                },
+                "version": 2
+            },
+            "Cisco-IOS-XE-http:http": {
+                "authentication": {
+                    "local": [
+                        null
+                    ]
+                },
+                "server": true,
+                "secure-server": true
+            }
+        },
+        "policy": {
+            "Cisco-IOS-XE-policy:class-map": [
+                {
+                    "name": "non-client-nrt-class",
+                    "prematch": "match-any"
+                },
+                {
+                    "name": "system-cpp-default",
+                    "prematch": "match-any",
+                    "description": "EWLC data, Inter FED Traffic"
+                },
+                {
+                    "name": "system-cpp-police-data",
+                    "prematch": "match-any",
+                    "description": "ICMP redirect, ICMP_GEN and BROADCAST"
+                },
+                {
+                    "name": "system-cpp-police-dhcp-snooping",
+                    "prematch": "match-any",
+                    "description": "DHCP snooping"
+                },
+                {
+                    "name": "system-cpp-police-dot1x-auth",
+                    "prematch": "match-any",
+                    "description": "DOT1X Auth"
+                },
+                {
+                    "name": "system-cpp-police-ewlc-control",
+                    "prematch": "match-any",
+                    "description": "EWLC Control"
+                },
+                {
+                    "name": "system-cpp-police-forus",
+                    "prematch": "match-any",
+                    "description": "Forus Address resolution and Forus traffic"
+                },
+                {
+                    "name": "system-cpp-police-high-rate-app",
+                    "prematch": "match-any",
+                    "description": "High Rate Applications"
+                },
+                {
+                    "name": "system-cpp-police-ios-feature",
+                    "prematch": "match-any",
+                    "description": "ICMPGEN,BROADCAST,ICMP,L2LVXCntrl,ProtoSnoop,PuntWebauth,MCASTData,Transit,DOT1XAuth,Swfwd,LOGGING,L2LVXData,ForusTraffic,ForusARP,McastEndStn,Openflow,Exception,EGRExcption,NflSampled,RpfFailed"
+                },
+                {
+                    "name": "system-cpp-police-ios-routing",
+                    "prematch": "match-any",
+                    "description": "L2 control, Topology control, Routing control, Low Latency"
+                },
+                {
+                    "name": "system-cpp-police-l2-control",
+                    "prematch": "match-any",
+                    "description": "L2 control"
+                },
+                {
+                    "name": "system-cpp-police-l2lvx-control",
+                    "prematch": "match-any",
+                    "description": "L2 LVX control packets"
+                },
+                {
+                    "name": "system-cpp-police-multicast",
+                    "prematch": "match-any",
+                    "description": "MCAST Data"
+                },
+                {
+                    "name": "system-cpp-police-multicast-end-station",
+                    "prematch": "match-any",
+                    "description": "MCAST END STATION"
+                },
+                {
+                    "name": "system-cpp-police-protocol-snooping",
+                    "prematch": "match-any",
+                    "description": "Protocol snooping"
+                },
+                {
+                    "name": "system-cpp-police-punt-webauth",
+                    "prematch": "match-any",
+                    "description": "Punt Webauth"
+                },
+                {
+                    "name": "system-cpp-police-routing-control",
+                    "prematch": "match-any",
+                    "description": "Routing control and Low Latency"
+                },
+                {
+                    "name": "system-cpp-police-stackwise-virt-control",
+                    "prematch": "match-any",
+                    "description": "Stackwise Virtual OOB"
+                },
+                {
+                    "name": "system-cpp-police-sw-forward",
+                    "prematch": "match-any",
+                    "description": "Sw forwarding, L2 LVX data packets, LOGGING, Transit Traffic"
+                },
+                {
+                    "name": "system-cpp-police-sys-data",
+                    "prematch": "match-any",
+                    "description": "Openflow, Exception, EGR Exception, NFL Sampled Data, RPF Failed"
+                },
+                {
+                    "name": "system-cpp-police-system-critical",
+                    "prematch": "match-any",
+                    "description": "System Critical and Gold Pkt"
+                },
+                {
+                    "name": "system-cpp-police-topology-control",
+                    "prematch": "match-any",
+                    "description": "Topology control"
+                }
+            ],
+            "Cisco-IOS-XE-policy:policy-map": [
+                {
+                    "name": "system-cpp-policy"
+                }
+            ]
+        },
+        "interface": {
+            "GigabitEthernet": [
+                {
+                    "name": "0/0",
+                    "vrf": {
+                        "forwarding": "Mgmt-vrf"
+                    }
+                },
+                {
+                    "name": "1/0/1",
+                    "description": "RESTCONF DEMO - ACCESS VLAN 10",
+                    "switchport-config": {
+                        "switchport": {
+                            "Cisco-IOS-XE-switch:access": {
+                                "vlan": {
+                                    "vlan": 99
+                                }
+                            },
+                            "Cisco-IOS-XE-switch:mode": {
+                                "access": {}
+                            }
+                        }
+                    },
+                    "Cisco-IOS-XE-spanning-tree:spanning-tree": {
+                        "portfast": {}
+                    }
+                },
+                {
+                    "name": "1/0/10"
+                },
+                {
+                    "name": "1/0/11"
+                },
+                {
+                    "name": "1/0/12"
+                },
+                {
+                    "name": "1/0/13"
+                },
+                {
+                    "name": "1/0/14"
+                },
+                {
+                    "name": "1/0/15"
+                },
+                {
+                    "name": "1/0/16"
+                },
+                {
+                    "name": "1/0/17"
+                },
+                {
+                    "name": "1/0/18"
+                },
+                {
+                    "name": "1/0/19"
+                },
+                {
+                    "name": "1/0/2",
+                    "description": "RESTCONF DEMO - ACCESS VLAN 20"
+                },
+                {
+                    "name": "1/0/20"
+                },
+                {
+                    "name": "1/0/21"
+                },
+                {
+                    "name": "1/0/22"
+                },
+                {
+                    "name": "1/0/23"
+                },
+                {
+                    "name": "1/0/24",
+                    "description": "RESTCONF DEMO - TRUNK TO ROUTER/SWITCH"
+                },
+                {
+                    "name": "1/0/3"
+                },
+                {
+                    "name": "1/0/4"
+                },
+                {
+                    "name": "1/0/5"
+                },
+                {
+                    "name": "1/0/6"
+                },
+                {
+                    "name": "1/0/7"
+                },
+                {
+                    "name": "1/0/8"
+                },
+                {
+                    "name": "1/0/9"
+                },
+                {
+                    "name": "1/1/1"
+                },
+                {
+                    "name": "1/1/2"
+                },
+                {
+                    "name": "1/1/3"
+                },
+                {
+                    "name": "1/1/4"
+                }
+            ],
+            "Vlan": [
+                {
+                    "name": 1
+                },
+                {
+                    "name": 99,
+                    "ip": {
+                        "address": {
+                            "primary": {
+                                "address": "10.10.10.10",
+                                "mask": "255.255.255.0"
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        "control-plane": {
+            "Cisco-IOS-XE-policy:service-policy": {
+                "input": "system-cpp-policy"
+            }
+        },
+        "login": {
+            "on-success": {
+                "log": {}
+            }
+        },
+        "redundancy": {
+            "mode": "sso"
+        },
+        "spanning-tree": {
+            "Cisco-IOS-XE-spanning-tree:extend": {
+                "system-id": [
+                    null
+                ]
+            },
+            "Cisco-IOS-XE-spanning-tree:mode": "rapid-pvst"
+        },
+        "crypto": {
+            "Cisco-IOS-XE-crypto:pki": {
+                "certificate": {
+                    "chain": [
+                        {
+                            "name": "SLA-TrustPoint",
+                            "certificate": [
+                                {
+                                    "serial": "01",
+                                    "certtype": "ca"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "TP-self-signed-1022818423",
+                            "certificate": [
+                                {
+                                    "serial": "01",
+                                    "certtype": "self-signed"
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "trustpoint": [
+                    {
+                        "id": "SLA-TrustPoint",
+                        "enrollment": {
+                            "pkcs12": [
+                                null
+                            ]
+                        },
+                        "revocation-check": [
+                            "crl"
+                        ]
+                    },
+                    {
+                        "id": "TP-self-signed-1022818423",
+                        "enrollment": {
+                            "selfsigned": [
+                                null
+                            ]
+                        },
+                        "revocation-check": [
+                            "none"
+                        ],
+                        "subject-name": "cn=IOS-Self-Signed-Certificate-1022818423"
+                    }
+                ]
+            }
+        },
+        "license": {
+            "boot": {
+                "level": {
+                    "network-advantage": {
+                        "addon": "dna-essentials"
+                    }
+                }
+            }
+        },
+        "line": {
+            "aux": [
+                {
+                    "first": "0"
+                }
+            ],
+            "console": [
+                {
+                    "first": "0",
+                    "password": {
+                        "secret": "console"
+                    },
+                    "stopbits": "1"
+                }
+            ],
+            "vty": [
+                {
+                    "first": 0,
+                    "last": 4,
+                    "login": {
+                        "local": [
+                            null
+                        ]
+                    },
+                    "transport": {
+                        "input": {
+                            "input": [
+                                "ssh"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "first": 5,
+                    "last": 15,
+                    "login": {
+                        "local": [
+                            null
+                        ]
+                    },
+                    "transport": {
+                        "input": {
+                            "input": [
+                                "ssh"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        "event": {
+            "Cisco-IOS-XE-eem:manager": {
+                "session": {
+                    "cli": {
+                        "username": {
+                            "username_in_word": [
+                                {
+                                    "username_in_word": "guardian",
+                                    "privilege": 15
+                                }
+                            ]
+                        }
+                    }
+                },
+                "applet": [
+                    {
+                        "name": "eem-labnet-prevention-script1",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog-option": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli-choice": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script2",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog-option": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli-choice": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script3",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog-option": {
+                                    "msg": "Attempting to delete startup-config - restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli-choice": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "2.2",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script4",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog-option": {
+                                    "msg": "Attempted to delete the nvram:default-config file - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script5",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog-option": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script6",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog-option": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script7",
+                        "event": {
+                            "syslog-choice": {
+                                "pattern": "%SYS-5-RESTART: System restarted"
+                            }
+                        },
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog-option": {
+                                    "msg": "Procedure to prevent console lockout"
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli-choice": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "3.0",
+                                "cli-choice": {
+                                    "command": "show file information nvram:startup-config"
+                                }
+                            },
+                            {
+                                "name": "4.0",
+                                "regexp-option": {
+                                    "string-pattern": "%Error reading nvram:startup-config",
+                                    "string-input": "$startup_config_output"
+                                }
+                            },
+                            {
+                                "name": "4.1",
+                                "if": {
+                                    "string-op-1": "$_regexp_result",
+                                    "keyword": "eq",
+                                    "string-op-2": ""
+                                }
+                            },
+                            {
+                                "name": "5.0",
+                                "syslog-option": {
+                                    "msg": "Startup-config found, console and enable defaults set"
+                                }
+                            },
+                            {
+                                "name": "5.1",
+                                "cli-choice": {
+                                    "command": "config t"
+                                }
+                            },
+                            {
+                                "name": "5.2",
+                                "cli-choice": {
+                                    "command": "no security passwords min-length"
+                                }
+                            },
+                            {
+                                "name": "5.3",
+                                "cli-choice": {
+                                    "command": "enable secret secret"
+                                }
+                            },
+                            {
+                                "name": "5.4",
+                                "cli-choice": {
+                                    "command": "line console 0"
+                                }
+                            },
+                            {
+                                "name": "5.5",
+                                "cli-choice": {
+                                    "command": "password console"
+                                }
+                            },
+                            {
+                                "name": "5.6",
+                                "cli-choice": {
+                                    "command": "login"
+                                }
+                            },
+                            {
+                                "name": "5.7",
+                                "cli-choice": {
+                                    "command": "end"
+                                }
+                            },
+                            {
+                                "name": "5.8",
+                                "cli-choice": {
+                                    "command": "wr"
+                                }
+                            },
+                            {
+                                "name": "6.1",
+                                "syslog-option": {
+                                    "msg": "No startup-config found, restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "6.3",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "7.0",
+                                "end": [
+                                    null
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script8",
+                        "action": [
+                            {
+                                "name": "1.0",
+                                "syslog-option": {
+                                    "msg": "Procedure to restore default Lab-config!."
+                                }
+                            },
+                            {
+                                "name": "2.0",
+                                "cli-choice": {
+                                    "command": "enable"
+                                }
+                            },
+                            {
+                                "name": "3.0",
+                                "cli-choice": {
+                                    "command": "show file information flash:vlan.dat"
+                                }
+                            },
+                            {
+                                "name": "4.0",
+                                "regexp-option": {
+                                    "string-pattern": "flash:vlan.dat:",
+                                    "string-input": "$vlan_dat_output"
+                                }
+                            },
+                            {
+                                "name": "4.1",
+                                "if": {
+                                    "string-op-1": "$_regexp_result",
+                                    "keyword": "eq",
+                                    "string-op-2": ""
+                                }
+                            },
+                            {
+                                "name": "5.0",
+                                "syslog-option": {
+                                    "msg": "No vlan.dat found, restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "5.1",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "5.3",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "5.4",
+                                "reload": [
+                                    null
+                                ]
+                            },
+                            {
+                                "name": "6.1",
+                                "syslog-option": {
+                                    "msg": "vlan.dat found, restoring default Lab-config"
+                                }
+                            },
+                            {
+                                "name": "6.4",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "6.6",
+                                "cli-choice": {
+                                    "command": ""
+                                }
+                            },
+                            {
+                                "name": "6.7",
+                                "reload": [
+                                    null
+                                ]
+                            },
+                            {
+                                "name": "7.0",
+                                "end": [
+                                    null
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "name": "eem-labnet-prevention-script9",
+                        "action": [
+                            {
+                                "name": "1.1",
+                                "syslog-option": {
+                                    "msg": "Attempted to delete an scripting statement - Action blocked",
+                                    "priority": "notifications"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        "Cisco-IOS-XE-diagnostics:diagnostic": {
+            "bootup": {
+                "level": "minimal"
+            }
+        },
+        "Cisco-IOS-XE-switch:switch": [
+            {
+                "number": 1,
+                "provision": "c9200l-24t-4g"
+            }
+        ]
+    }
+}

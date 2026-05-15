@@ -125,19 +125,21 @@ def put_interface(interface, router, log, set_status):
     payload = {
         "ietf-interfaces:interface": {
             "name": interface["name"],
-            "description": interface["description"],
+            "description": interface.get("description", ""),
             "type": "iana-if-type:ethernetCsmacd",
-            "enabled": True,
-            "ietf-ip:ipv4": {
-                "address": [
-                    {
-                        "ip": interface["ip"],
-                        "netmask": interface["netmask"],
-                    }
-                ]
-            },
+            "enabled": interface.get("enabled", True)
         }
     }
+
+    if interface.get("ip") and interface.get("netmask"):
+        payload["ietf-interfaces:interface"]["ietf-ip:ipv4"] = {
+            "address": [
+                {
+                    "ip": interface["ip"],
+                    "netmask": interface["netmask"]
+                }
+            ]
+        }
 
     log_restconf_request("PUT", url, payload, log)
 
@@ -252,13 +254,20 @@ def deploy_restconf(config_json_text, router, log, set_status):
     log(pretty_json(config))
     log("------------------------------------------------")
 
-    patch_hostname(config["hostname"], router, log, set_status)
+    if "hostname" in config:
+        patch_hostname(config["hostname"], router, log, set_status)
+    else:
+        log("No hostname found in JSON config. Skipping hostname deployment.")
 
-    for interface in config["interfaces"]:
+    for interface in config.get("interfaces", []):
         put_interface(interface, router, log, set_status)
 
-    delete_ospf(config["ospf"], router, log, set_status)
-    post_ospf_process(config["ospf"], router, log, set_status)
+    if "ospf" in config:
+        delete_ospf(config["ospf"], router, log, set_status)
+        post_ospf_process(config["ospf"], router, log, set_status)
+    else:
+        log("No OSPF section found in JSON config. Skipping OSPF deployment.")
+
     verify_running_config(router, log, set_status)
 
     log("RESTCONF deployment successful.")
