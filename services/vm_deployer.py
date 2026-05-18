@@ -326,7 +326,7 @@ def deploy_router_vm(
         )
 
         # =========================================================
-        # WAIT FOR DHCP
+        # WAIT FOR DHCP / IP DISCOVERY
         # =========================================================
 
         found_ip = ""
@@ -344,41 +344,45 @@ def deploy_router_vm(
 
                 if set_status:
                     set_status(
-                        f"Checking DHCP lease... "
+                        f"Checking DHCP/ARP... "
                         f"({attempt + 1}/{max_attempts})",
                         0.90
                     )
 
+                # -------------------------------------------------
+                # 1) Libvirt DHCP lease check
+                # Works for libvirt networks like "default"
+                # -------------------------------------------------
+
                 leases = ssh_exec(
                     ssh,
-                    f"sudo virsh net-dhcp-leases "
-                    f"{libvirt_network} || true"
+                    f"sudo virsh net-dhcp-leases {libvirt_network} 2>/dev/null || true"
                 )
 
                 for line in leases.splitlines():
-
                     if management_mac.lower() in line.lower():
-
                         parts = line.split()
 
                         for part in parts:
-
                             if "/" in part and "." in part:
                                 found_ip = part.split("/")[0]
                                 break
 
                 if found_ip:
-                    log(f"DHCP IP found: {found_ip}")
+                    log(f"DHCP IP found via libvirt leases: {found_ip}")
                     break
+
+                # -------------------------------------------------
+                # 2) ARP / neighbor table check
+                # Works if host already learned the MAC
+                # -------------------------------------------------
 
                 arp_output = ssh_exec(
                     ssh,
-                    f"ip neigh | grep -i "
-                    f"'{management_mac}' || true"
+                    f"ip neigh | grep -i '{management_mac}' || true"
                 )
 
                 for line in arp_output.splitlines():
-
                     parts = line.split()
 
                     if parts and "." in parts[0]:
@@ -388,6 +392,44 @@ def deploy_router_vm(
                 if found_ip:
                     log(f"ARP IP found: {found_ip}")
                     break
+
+                # -------------------------------------------------
+                # 3) Bridge subnet ping sweep
+                # Works for Linux bridge networks like br0
+                # Only every 10 attempts to avoid spamming network
+                # -------------------------------------------------
+
+                if attempt % 10 == 0:
+                    log("No DHCP/ARP entry found yet. Running bridge subnet ping sweep...")
+
+                    sweep_cmd = f"""
+BRIDGE_IP=$(ip -4 -o addr show {libvirt_network} 2>/dev/null | awk '{{print $4}}' | cut -d/ -f1 | head -1);
+
+if [ -n "$BRIDGE_IP" ]; then
+    PREFIX=$(echo "$BRIDGE_IP" | cut -d. -f1-3);
+
+    for i in $(seq 1 254); do
+        ping -c1 -W1 $PREFIX.$i >/dev/null 2>&1 &
+    done;
+
+    wait;
+
+    ip neigh | grep -i '{management_mac}' || true;
+fi
+"""
+
+                    sweep_output = ssh_exec(ssh, sweep_cmd)
+
+                    for line in sweep_output.splitlines():
+                        parts = line.split()
+
+                        if parts and "." in parts[0]:
+                            found_ip = parts[0]
+                            break
+
+                    if found_ip:
+                        log(f"Ping sweep IP found: {found_ip}")
+                        break
 
                 time.sleep(2)
 

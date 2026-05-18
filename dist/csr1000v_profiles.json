@@ -1,0 +1,14 @@
+{
+    "settings": {
+        "github_api_url": "https://api.github.com/repos/MijsBjornPXL/Cisco-CSR1000v/contents/Configs?ref=main"
+    },
+    "profiles": {
+        "Example_Router": {
+            "host": "10.10.10.10",
+            "username": "admin",
+            "password": "password",
+            "netconf_port": "830",
+            "restconf_port": "443"
+        }
+    }
+}
