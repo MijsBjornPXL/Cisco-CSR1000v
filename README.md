@@ -170,6 +170,7 @@ Enable required APIs on the Cisco device:
 conf t
 !
 netconf-yang
+netconf-yang feature candidate-datastore
 !
 restconf
 !
