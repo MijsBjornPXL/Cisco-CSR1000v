@@ -1,14 +1,16 @@
 import os
 import requests
 
-from constants import GITHUB_API_URL, LOCAL_CONFIG_DIR
+from constants import LOCAL_CONFIG_DIR
 
-def sync_configs_from_github(log):
+
+def sync_configs_from_github(log, github_api_url):
     os.makedirs(LOCAL_CONFIG_DIR, exist_ok=True)
 
     log("Fetching configs from GitHub...")
+    log(f"GitHub API URL: {github_api_url}")
 
-    response = requests.get(GITHUB_API_URL, timeout=30)
+    response = requests.get(github_api_url, timeout=30)
     response.raise_for_status()
 
     files = response.json()
@@ -27,4 +29,3 @@ def sync_configs_from_github(log):
             downloaded += 1
 
     log(f"Downloaded {downloaded} config(s) from GitHub.")
-    return downloaded

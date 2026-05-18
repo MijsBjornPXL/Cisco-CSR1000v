@@ -1,4 +1,5 @@
-GITHUB_API_URL = "https://api.github.com/repos/MijsBjornPXL/Cisco-CSR1000v/contents/Configs?ref=main"
+DEFAULT_GITHUB_API_URL = "https://api.github.com/repos/MijsBjornPXL/Cisco-CSR1000v/contents/Configs?ref=main"
+
 PROFILE_FILE = "csr1000v_profiles.json"
 BACKUP_DIR = "backups"
 LOCAL_CONFIG_DIR = "Configs"

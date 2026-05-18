@@ -20,9 +20,17 @@ from services.restconf_service import deploy_restconf, get_running_config_restco
 from services.ssh_service import deploy_ssh_cli
 from services.vm_deployer import deploy_router_vm
 
+from utils.profiles import (
+    load_profiles_from_file,
+    save_profiles_to_file,
+    get_github_api_url,
+    set_github_api_url,
+    ensure_profile_file_exists
+)
 
 class ModernConfigPushGUI:
     def __init__(self, root):
+        ensure_profile_file_exists()
         self.root = root
         self.root.title("Cisco Config Deployer - M1jsXploit")
         self.root.geometry("1280x890")
@@ -32,15 +40,21 @@ class ModernConfigPushGUI:
         self.is_loading = False
         self.password_visible = False
         self.profiles = load_profiles_from_file()
+        self.github_api_url = get_github_api_url()
 
         os.makedirs(LOCAL_CONFIG_DIR, exist_ok=True)
 
         self.create_widgets()
         self.load_profile_dropdown()
         self.reload_local_configs()
+        self.profiles = load_profiles_from_file()
 
     def create_widgets(self):
-        self.main_frame = ctk.CTkFrame(self.root, corner_radius=16)
+        self.main_frame = ctk.CTkFrame(
+            self.root,
+            corner_radius=16,
+            fg_color=("#F3F4F6", "#2B2B2B")
+        )
         self.main_frame.pack(fill="both", expand=True, padx=20, pady=8)
 
         header_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -56,10 +70,14 @@ class ModernConfigPushGUI:
             header_frame,
             text="Deploy NETCONF XML, RESTCONF JSON and SSH CLI configs",
             font=ctk.CTkFont(size=13),
-            text_color="gray70"
+            text_color=("gray45", "gray70")
         ).pack(anchor="w", pady=(3, 0))
 
-        settings_frame = ctk.CTkFrame(self.main_frame, corner_radius=14, fg_color="#323232")
+        settings_frame = ctk.CTkFrame(
+            self.main_frame,
+            corner_radius=14,
+            fg_color=("#E5E7EB", "#323232")
+        )
         settings_frame.pack(fill="x", padx=22, pady=(8, 8))
 
         ctk.CTkLabel(
@@ -129,7 +147,7 @@ class ModernConfigPushGUI:
                 target_grid,
                 text=text,
                 font=ctk.CTkFont(size=11),
-                text_color="gray75"
+                text_color=("gray30", "gray75")
             ).grid(row=0, column=i, sticky="w", padx=6, pady=(0, 3))
 
         self.host_entry = ctk.CTkEntry(target_grid, placeholder_text="10.10.10.10")
@@ -150,8 +168,9 @@ class ModernConfigPushGUI:
             text="👁",
             width=38,
             command=self.toggle_password_visibility,
-            fg_color="#444444",
-            hover_color="#555555"
+            fg_color=("#D1D5DB", "#444444"),
+            hover_color=("#9CA3AF", "#555555"),
+            text_color=("black", "white")
         )
         self.password_toggle_button.grid(row=0, column=1)
 
@@ -164,7 +183,11 @@ class ModernConfigPushGUI:
         for col in range(5):
             target_grid.columnconfigure(col, weight=1)
 
-        select_frame = ctk.CTkFrame(self.main_frame, corner_radius=14)
+        select_frame = ctk.CTkFrame(
+            self.main_frame,
+            corner_radius=14,
+            fg_color=("#E5E7EB", "#323232")
+        )
         select_frame.pack(fill="x", padx=22, pady=(0, 8))
 
         select_row = ctk.CTkFrame(select_frame, fg_color="transparent")
@@ -272,14 +295,22 @@ class ModernConfigPushGUI:
         progress_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
         progress_frame.pack(fill="x", padx=22, pady=(0, 6))
 
-        self.status_label = ctk.CTkLabel(progress_frame, text="Ready", text_color="gray70")
+        self.status_label = ctk.CTkLabel(
+            progress_frame,
+            text="Ready",
+            text_color=("gray45", "gray70")
+        )
         self.status_label.pack(anchor="w")
 
         self.progress_bar = ctk.CTkProgressBar(progress_frame)
         self.progress_bar.pack(fill="x", pady=(4, 0))
         self.progress_bar.set(0)
 
-        log_frame = ctk.CTkFrame(self.main_frame, corner_radius=14)
+        log_frame = ctk.CTkFrame(
+            self.main_frame,
+            corner_radius=14,
+            fg_color=("#E5E7EB", "#323232")
+        )
         log_frame.pack(fill="both", expand=True, padx=22, pady=(0, 8))
 
         ctk.CTkLabel(
@@ -291,7 +322,9 @@ class ModernConfigPushGUI:
         self.log_box = ctk.CTkTextbox(
             log_frame,
             font=ctk.CTkFont(family="Consolas", size=13),
-            corner_radius=10
+            corner_radius=10,
+            fg_color=("#F9FAFB", "#1A1A1A"),
+            text_color=("black", "white")
         )
         self.log_box.pack(fill="both", expand=True, padx=18, pady=(0, 14))
 
@@ -299,7 +332,7 @@ class ModernConfigPushGUI:
             self.main_frame,
             text="Cisco Config Deployer v1.0 | by M1jsXploit",
             font=ctk.CTkFont(size=11),
-            text_color="gray55"
+            text_color=("gray45", "gray55")
         )
         footer.pack(anchor="e", padx=22, pady=(0, 8))
 
@@ -471,17 +504,17 @@ class ModernConfigPushGUI:
         try:
             self.set_buttons_state("disabled")
             self.start_loading("Syncing configs from GitHub...")
-
-            sync_configs_from_github(self.log)
+    
+            sync_configs_from_github(self.log, self.github_api_url)
             self.reload_local_configs()
-
+    
             self.stop_loading("Configs refreshed.", 1)
-
+    
         except Exception as error:
             self.stop_loading("Refresh failed.", 0)
             self.log(f"GitHub sync failed: {error}")
             messagebox.showerror("GitHub Error", str(error))
-
+    
         finally:
             self.set_buttons_state("normal")
 
@@ -757,7 +790,11 @@ class ModernConfigPushGUI:
         window.attributes("-topmost", True)
         window.after(300, lambda: window.attributes("-topmost", False))
 
-        frame = ctk.CTkFrame(window, corner_radius=14)
+        frame = ctk.CTkFrame(
+            window,
+            corner_radius=14,
+            fg_color=("#E5E7EB", "#323232")
+        )
         frame.pack(fill="both", expand=True, padx=20, pady=20)
 
         ctk.CTkLabel(
@@ -771,7 +808,7 @@ class ModernConfigPushGUI:
                 parent,
                 text=label_text,
                 font=ctk.CTkFont(size=12),
-                text_color="gray75"
+                text_color=("gray30", "gray75")
             ).pack(anchor="w", padx=15, pady=(8, 2))
 
             entry = ctk.CTkEntry(parent, placeholder_text=placeholder_text, show=show)
