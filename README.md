@@ -330,10 +330,7 @@ Run executable:
 
 # 👨‍💻 Author
 
-**Bjorn Mijs**
-
-GitHub:  
-[MijsBjornPXL GitHub Profile](https://github.com/MijsBjornPXL)
+**Bjorn Mijs - M1jsXploit**
 
 ---
 
