@@ -1,9 +1,5 @@
 # Cisco Config Deployer
 
-<p align="center">
-  <img src="docs/banner.png" width="100%">
-</p>
-
 Modern Python-based deployment tool for Cisco IOS-XE devices supporting:
 
 - NETCONF
@@ -11,6 +7,12 @@ Modern Python-based deployment tool for Cisco IOS-XE devices supporting:
 - SSH CLI deployments
 - CSR1000v VM automation
 - GitHub configuration syncing
+<br><br>
+
+![Cisco Config Deployer GUI](screens/gui.png)
+
+<br>
+
 
 The application provides a centralized **network-as-code** workflow with a modern GUI for deploying, previewing, validating and managing Cisco configurations.
 
@@ -35,9 +37,6 @@ Supported configuration formats:
 - `.json` → RESTCONF
 - `.cli` → SSH CLI deployment
 
-Repository:
-
-[Cisco-Config-Deployer GitHub Repository](https://github.com/MijsBjornPXL/Cisco-Config-Deployer)
 
 ---
 
