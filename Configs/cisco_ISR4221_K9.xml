@@ -8,7 +8,7 @@
         <ip>
           <address>
             <primary>
-              <address>192.168.20.1</address>
+              <address>192.168.40.1</address>
               <mask>255.255.255.0</mask>
             </primary>
           </address>
